@@ -1,6 +1,6 @@
 {
   "name": "archlock",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A lockfile for your architecture. You own the design, your agent writes the code.",
   "keywords": [
     "architecture",
