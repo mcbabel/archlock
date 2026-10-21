@@ -6,7 +6,7 @@ This folder is the architecture lockfile of this repository, maintained with [ar
 Each `*.arch.py` file sketches one module: which files belong to it, which modules it may depend on,
 and its public API. CI runs `archlock check`, so every architecture change is visible and deliberate.
 
-**8,846 lines of code → 736 lines of architecture (12×)**
+**8,870 lines of code → 738 lines of architecture (12×)**
 
 ```mermaid
 graph LR
@@ -69,7 +69,7 @@ graph LR
 | [git](./git.arch.py) | Read-only git helpers for `archlock diff`: base resolution, temporary worktrees, changed lines. | 9 | – |
 | [init](./init.arch.py) | Heuristic module and language detection for `archlock init`. | 4 | config, extract, fs |
 | [mcp](./mcp.arch.py) | MCP server (stdio) exposing the architecture and the check to coding agents. Read-only. | 2 | config, core, engine, extract, report |
-| [report](./report.arch.py) | Presentation: terminal, JSON, GitHub annotations, Mermaid graph, README and text diffs. | 24 | core, engine |
+| [report](./report.arch.py) | Presentation: terminal, JSON, GitHub annotations, Mermaid graph, README and text diffs. | 26 | core, engine |
 | [sketch](./sketch.arch.py) | The .arch.py format: parse (web-tree-sitter), render (deterministic), load and write. | 40 | core, fs |
 
 To change the design, edit a sketch and run `archlock push` to let your coding agent update the code.

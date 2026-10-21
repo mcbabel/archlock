@@ -115,9 +115,11 @@ describe("archlock stats and graph", () => {
       edges: 4,
     });
     expect(data.badge).toContain("https://img.shields.io/badge/architecture-4%20modules");
+    // The fixture is small: a neutral note instead of a ratio (see test/report/format.test.ts).
     expect((await archlock(dir, "stats")).stdout).toMatch(
-      /lines of code → \d+ lines of architecture/,
+      /^\d+ lines of code \(no compression ratio below 300 lines\)$/m,
     );
+    expect(data.badge).not.toContain("·");
   });
 
   it("prints the module graph as Mermaid", async () => {

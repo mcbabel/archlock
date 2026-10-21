@@ -7,7 +7,7 @@
 | `archlock accept [module…]` | Adopts code changes into the sketches, keeping comments. Shows a diff and asks first. `--deps-only`, `--symbols-only`, `--yes`. |
 | `archlock push` | Lets your agent change the code to match the sketches, round by round. `--agent`, `--print-prompt`, `--max-rounds`, `--check-command`, `--yes`. Tested end to end with Claude Code; see [AGENTS.md](AGENTS.md). |
 | `archlock diff` | Architecture changes since the merge base. `--base <ref>`, `--format terminal\|markdown\|json`. |
-| `archlock stats` | Compression ratio, modules, symbols, edges, share of unannotated types, cycles. `--badge`. |
+| `archlock stats` | Compression ratio, modules, symbols, edges, share of unannotated types, cycles. `--badge`. The ratio is shown from 300 lines of code and only when the sketches are shorter than the code; otherwise a short note takes its place. |
 | `archlock graph` | The module graph as Mermaid. |
 | `archlock mcp` | MCP server over stdio (`get_architecture`, `check`, `explain_violation`, `get_module_for_file`). |
 
