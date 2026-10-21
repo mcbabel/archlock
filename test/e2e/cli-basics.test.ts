@@ -48,6 +48,7 @@ describe("archlock CLI exit codes", () => {
 });
 
 describe("archlock CLI and pipes", () => {
+  // Writes 1,500 files and checks them: slow on Windows runners, hence its own timeout.
   it("does not crash when the reader closes the pipe early", async () => {
     const { spawnSync } = await import("node:child_process");
     const { mkdirSync, mkdtempSync, writeFileSync } = await import("node:fs");
@@ -74,5 +75,5 @@ describe("archlock CLI and pipes", () => {
     );
     expect(result.stderr).not.toContain("EPIPE");
     expect(result.stderr).not.toContain("Unhandled");
-  });
+  }, 120_000);
 });

@@ -1,5 +1,6 @@
-# Publishes archlock to npm with provenance when a "Version Packages" pull request is merged.
-# Needs one repository secret: NPM_TOKEN (an npm "Automation" token).
+# Publishes archlock to npm with provenance when the "chore: release" pull request is merged.
+# Authentication uses npm Trusted Publishing (OIDC): npmjs.com trusts this workflow file
+# (mcbabel/archlock, .github/workflows/release.yml), so no npm token or secret is needed.
 name: Release
 
 on:
@@ -11,7 +12,7 @@ concurrency: release-${{ github.ref }}
 permissions:
   contents: write
   pull-requests: write
-  id-token: write # npm provenance
+  id-token: write # npm Trusted Publishing (OIDC) and provenance
 
 jobs:
   release:
@@ -25,7 +26,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://registry.npmjs.org
+      # Trusted Publishing needs npm 11.5.1 or newer; Node 22 ships npm 10. pnpm publish hands the
+      # upload to this npm.
+      - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
 
@@ -38,8 +41,7 @@ jobs:
           commit: "chore: release"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # No NPM_TOKEN: changesets/action then writes no .npmrc and npm authenticates via OIDC.
           # Provenance is enabled once, by publishConfig.provenance in package.json.
           # npm passes fetch-retries to Sigstore, which then retries the (non-idempotent) upload of
           # the provenance entry to the transparency log. If the log stored the entry but the

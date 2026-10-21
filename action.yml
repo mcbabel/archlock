@@ -1,9 +1,11 @@
-name: archlock
-description: A lockfile for your architecture. Check the sketches in CI and comment architecture diffs on pull requests.
+# Marketplace listing: the name must be unique and must not match a GitHub user or organization
+# (a user called "archlock" exists), so the listing uses a longer name.
+name: archlock architecture lockfile
+description: Fail CI when code drifts from your architecture sketches, and comment architecture diffs on PRs.
 author: archlock contributors
 branding:
   icon: lock
-  color: green
+  color: blue
 
 inputs:
   mode:
