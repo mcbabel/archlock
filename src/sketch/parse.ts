@@ -1,7 +1,7 @@
 /**
- * `.arch.py` text → ArchModule, with human comments attached to the elements they describe.
+ * Parses `.arch.py` text into an ArchModule, attaching comments to the elements they describe.
  *
- * Comment attachment rules (see docs/FORMAT.md):
+ * Attachment rules (docs/FORMAT.md):
  * - a comment on the same line as an element (after it) is that element's trailing comment;
  *   for classes and functions, the line of the header's `:` counts,
  * - a full-line comment attaches to the next element at the same level (leading),

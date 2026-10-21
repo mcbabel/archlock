@@ -1,5 +1,5 @@
-// Posts or updates ONE sticky pull-request comment with the archlock diff.
-// Uses only the GITHUB_TOKEN of the workflow run and the GitHub REST API; no other services.
+// Posts or updates a single sticky PR comment with the archlock diff.
+// Talks only to the GitHub REST API, with the workflow's GITHUB_TOKEN.
 // Usage: node comment.mjs <markdown-file>
 import { readFileSync } from "node:fs";
 

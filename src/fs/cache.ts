@@ -28,7 +28,7 @@ function buildId(): string {
     const st = statSync(fileURLToPath(import.meta.url));
     stamp = `${st.size}:${Math.floor(st.mtimeMs)}`;
   } catch {
-    // Not on disk (unusual bundlers): the version alone has to do.
+    // Not on disk (e.g. some bundlers): fall back to the version alone.
   }
   return `${CACHE_FORMAT}:${VERSION}:${stamp}`;
 }
@@ -61,7 +61,7 @@ export class ArchlockCache {
       const loaded = JSON.parse(readFileSync(this.file, "utf8")) as CacheData;
       if (loaded.build === build && typeof loaded.buckets === "object") this.data = loaded;
     } catch {
-      // A corrupt cache is simply rebuilt.
+      // Corrupt cache: start empty.
     }
   }
 

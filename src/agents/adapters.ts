@@ -1,8 +1,4 @@
-/**
- * How archlock starts the coding agent the user already has. Flags were checked against
- * `claude --help` (Claude Code 2.1), `codex exec --help` (Codex CLI 0.163) and
- * `opencode run --help` (OpenCode 1.19). `agent.command` in the config overrides all of them.
- */
+/** Command lines for the supported coding agents. `agent.command` in the config overrides them. */
 
 import { existsSync } from "node:fs";
 import { delimiter, join } from "node:path";
@@ -52,8 +48,8 @@ export const ADAPTERS: Record<Exclude<AgentName, "custom">, AgentAdapter> = {
   claude: {
     name: "claude",
     binary: "claude",
-    // -p: non-interactive; acceptEdits: may edit files; only the listed commands may run in Bash
-    // (the check command and agent.verifyCommands). Everything else is refused, not asked.
+    // -p: non-interactive; acceptEdits: may edit files. Bash may run only the listed commands
+    // (check command and agent.verifyCommands); anything else is refused without a prompt.
     invocation: (promptFile, commands) =>
       argv("claude", [
         "-p",

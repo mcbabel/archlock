@@ -1,6 +1,4 @@
-/**
- * Sketch vs. code → violations. Deterministic: violations come out sorted.
- */
+/** Compares sketches with code and returns violations in a deterministic order. */
 
 import {
   type ArchSymbol,
@@ -159,7 +157,6 @@ function compareModule(
   const sketchAt = (line: number): Location => ({ file: sketch.file, line, column: 1 });
   const hasCode = code.files.length > 0;
 
-  // Dependencies.
   for (const [target, sites] of [...code.deps.entries()].sort(([a], [b]) => compareNames(a, b))) {
     if (mod.dependsOn.includes(target)) continue;
     const first = sites[0] as ImportSite;
@@ -379,7 +376,7 @@ function diffClass(sketch: ClassLikeSymbol, code: ClassLikeSymbol): string[] {
   return out;
 }
 
-/** Strongly connected components with more than one module, each rotated to start at its smallest name. */
+/** Cycles as strongly connected components (Tarjan) of more than one module, sorted. */
 export function findCycles(graph: Map<string, string[]>): string[][] {
   let index = 0;
   const idx = new Map<string, number>();

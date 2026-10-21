@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          # This job installs nothing, so no pnpm cache (setup-node v5 would look for pnpm).
+          # Nothing is installed; disable the automatic package-manager cache.
           package-manager-cache: false
       # The site must not show numbers that differ from README.md and examples/real-world.
       - name: Check numbers

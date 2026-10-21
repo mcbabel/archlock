@@ -70,7 +70,7 @@ const ENTRY_NAMES = [
   "__init__.py",
 ];
 
-/** Default entry candidates for a module: `index.*` / `__init__.py` in the module root or its `src/`. */
+/** Default entry candidates: `index.*` or `__init__.py` in the module root or its `src/`. */
 export function defaultEntryCandidates(spec: ModuleSpec): string[] {
   const base = spec.paths.find((p) => !p.startsWith("!"));
   if (base === undefined) return [];

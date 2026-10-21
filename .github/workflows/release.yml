@@ -1,6 +1,5 @@
 # Publishes archlock to npm with provenance when the "chore: release" pull request is merged.
-# Authentication uses npm Trusted Publishing (OIDC): npmjs.com trusts this workflow file
-# (mcbabel/archlock, .github/workflows/release.yml), so no npm token or secret is needed.
+# Authenticates via npm Trusted Publishing (OIDC) for this workflow file; no npm token is needed.
 name: Release
 
 on:
@@ -26,8 +25,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # Trusted Publishing needs npm 11.5.1 or newer; Node 22 ships npm 10. pnpm publish hands the
-      # upload to this npm.
+      # Trusted Publishing needs npm >= 11.5.1; Node 22 ships npm 10. pnpm publish uses this npm.
       - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
@@ -41,13 +39,9 @@ jobs:
           commit: "chore: release"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # No NPM_TOKEN: changesets/action then writes no .npmrc and npm authenticates via OIDC.
-          # Provenance is enabled once, by publishConfig.provenance in package.json.
-          # npm passes fetch-retries to Sigstore, which then retries the (non-idempotent) upload of
-          # the provenance entry to the transparency log. If the log stored the entry but the
-          # response was lost, the retry fails with 409 TLOG_CREATE_ENTRY_ERROR and the package is
-          # not published. Without retries the entry is submitted exactly once; a failed publish
-          # can simply be re-run, because nothing reaches npm before the entry is logged.
+          # No NPM_TOKEN: changesets/action writes no .npmrc and npm authenticates via OIDC.
+          # Sigstore retries the non-idempotent tlog upload and then fails with 409; publish
+          # without retries. Provenance is set by publishConfig.provenance in package.json.
           NPM_CONFIG_FETCH_RETRIES: "0"
 
       # The GitHub Action is referenced as mcbabel/archlock@v0: move that tag to each release.

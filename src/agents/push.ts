@@ -62,8 +62,7 @@ export function runAgent(
   return new Promise((resolve, reject) => {
     // Windows cannot spawn .cmd shims (how npm installs CLIs) without a shell.
     const useShell = inv.shell || process.platform === "win32";
-    // The agent runs headless and gets everything from the work order: no stdin. Inheriting a
-    // non-terminal stdin made `claude -p` wait 3 s for input and print a warning.
+    // Agents run headless; give them an empty stdin.
     const io: ("ignore" | "inherit")[] = ["ignore", stdio, stdio];
     const child = useShell
       ? spawn(inv.display, { cwd, stdio: io, shell: true })

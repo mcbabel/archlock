@@ -1,13 +1,10 @@
-/**
- * Python syntax helpers on web-tree-sitter nodes, shared by the sketch parser and the
- * Python extractor: types, type parameters, parameters, decorators and docstrings.
- */
+/** Python syntax helpers on tree-sitter nodes, shared by the sketch parser and Python extractor. */
 
 import type { Node } from "web-tree-sitter";
 import { canonicalType, decodePythonString } from "../core/canonical.js";
 import type { Param } from "../core/model.js";
 
-/** A sketch/Python construct archlock cannot use, with the node to report. */
+/** An unsupported Python construct, with the node used for the error position. */
 export class PySyntaxError extends Error {
   constructor(
     message: string,
@@ -16,8 +13,6 @@ export class PySyntaxError extends Error {
     super(message);
   }
 }
-
-/** Module names are Python-style (dotted) identifiers so `from .module import x` stays valid. */
 
 export function kids(node: Node): Node[] {
   return node.children.filter((c): c is Node => c !== null);

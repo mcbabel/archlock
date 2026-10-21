@@ -3,8 +3,7 @@ import { ADAPTERS } from "../../src/agents/adapters.js";
 
 describe("agent adapters", () => {
   it("claude may run the check command and the configured verify commands, nothing else", () => {
-    // `Bash(cmd)` + `Bash(cmd *)`: a word boundary. Verified with Claude Code 2.1.299:
-    // `Bash(node ok.mjs*)` also allowed `node ok.mjs.bak`; this form refuses it.
+    // `Bash(cmd)` + `Bash(cmd *)` enforce a word boundary; `Bash(cmd*)` would also allow `cmd.bak`.
     const inv = ADAPTERS.claude.invocation(".archlock-cache/push/round-1.md", [
       "npx archlock check",
       "npm test",

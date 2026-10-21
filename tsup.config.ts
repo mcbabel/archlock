@@ -17,8 +17,7 @@ export default defineConfig({
   sourcemap: false,
   splitting: true,
   shims: false,
-  // The Python grammar (used for sketches and Python sources) ships inside the package so
-  // that installing archlock never compiles anything.
+  // Ship the Python grammar WASM in the package so installing archlock compiles nothing.
   onSuccess: async () => {
     const require = createRequire(import.meta.url);
     mkdirSync("dist/wasm", { recursive: true });

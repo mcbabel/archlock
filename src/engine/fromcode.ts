@@ -1,7 +1,7 @@
 import { type ArchModule, compareNames, emptyModuleSoft } from "../core/model.js";
 import type { CodeModule } from "../extract/index.js";
 
-/** The sketch archlock would write for a module, straight from the code (no human content). */
+/** Builds a module sketch from code alone, without human-written content. */
 export function moduleFromCode(code: CodeModule): ArchModule {
   return {
     name: code.name,

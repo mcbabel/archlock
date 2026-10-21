@@ -1,6 +1,6 @@
 /**
- * ArchModule → `.arch.py` text. Fully deterministic: same model, byte-identical output
- * (LF line endings, fixed group order, alphabetical symbols, canonical types).
+ * Renders an ArchModule as `.arch.py` text. Byte-stable: LF line endings, fixed group order,
+ * alphabetical symbols, canonical types.
  */
 
 import { isBareType, isPythonIdentifier, pythonString, renderType } from "../core/canonical.js";
@@ -115,8 +115,7 @@ function renderAssignment(key: string, value: string | string[]): string {
 
 function withTrailing(text: string, trailing: string | null): string {
   if (trailing === null) return text;
-  // Trailing comments go on the last line of a header (the one ending in `:`), a one-liner,
-  // or a docstring.
+  // The last line is a header's `:` line, a one-liner, or a docstring's closing line.
   const lines = text.split("\n");
   lines[lines.length - 1] = `${lines[lines.length - 1]}  ${trailing}`;
   return lines.join("\n");

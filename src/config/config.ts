@@ -271,9 +271,9 @@ export function serializeConfig(config: ArchlockConfig): string {
     rules: Object.fromEntries(
       RULE_NAMES.filter((r) => !FIXED_RULES.includes(r)).map((r) => [r, config.rules[r]]),
     ),
-    // Only when set, so configs written before it existed stay byte-identical.
+    // Omitted when unset so existing configs stay byte-identical.
     ...(config.maxTypeLength !== null ? { maxTypeLength: config.maxTypeLength } : {}),
-    // verifyCommands only when set, so configs written before it existed stay byte-identical.
+    // verifyCommands is omitted when unset, for the same reason.
     agent: {
       default: config.agent.default,
       command: config.agent.command,

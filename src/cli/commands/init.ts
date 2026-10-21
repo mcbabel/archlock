@@ -122,7 +122,7 @@ export async function runInitCommand(ctx: Context, opts: InitOptions): Promise<n
         config.agent = previous.agent;
       }
     } catch {
-      // An invalid config is simply replaced.
+      // An invalid config is replaced.
     }
   }
   if (existsSync(join(root, CONFIG_FILE)) && !opts.force) {
@@ -163,7 +163,7 @@ export async function runInitCommand(ctx: Context, opts: InitOptions): Promise<n
 
   config.languages = languages;
   config.include = detection.include;
-  // Entries are decided by the code (an empty __init__.py is not an entry), then written explicitly.
+  // The code decides the entries (an empty __init__.py is not one); sketches then name them.
   const { project } = await extractProject(
     root,
     config,
@@ -174,7 +174,6 @@ export async function runInitCommand(ctx: Context, opts: InitOptions): Promise<n
   for (const spec of specs) {
     const code = project.modules.get(spec.name);
     if (!code) continue;
-    // The entry actually used (an empty __init__.py does not count) is written explicitly.
     const mod = moduleFromCode(code);
     mod.entry = code.entry;
     archModules.push(mod);

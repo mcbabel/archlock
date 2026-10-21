@@ -1,8 +1,9 @@
 /**
- * Heuristic module detection for `archlock init`:
+ * Heuristic module detection for `archlock init`; the first strategy that finds modules wins:
  * 1. workspace packages of a monorepo,
- * 2. otherwise subdirectories of `src/` (plus a module for files directly in `src/`),
- * 3. otherwise top-level directories that contain code.
+ * 2. subpackages of a single top-level Python package,
+ * 3. subdirectories of `src/` (plus a module for files directly in `src/`),
+ * 4. top-level directories that contain code.
  */
 
 import { existsSync, readFileSync } from "node:fs";

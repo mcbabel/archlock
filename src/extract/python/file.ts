@@ -697,7 +697,7 @@ const BUILTIN_TYPES = new Set([
   "type",
 ]);
 
-/** `X = Union[A, B]`, `X = list[int]`, `X = A | None`: module-level type aliases without annotation. */
+/** Unannotated module-level type aliases: `X = Union[A, B]`, `X = list[int]`, `X = A | None`. */
 function looksLikeType(node: Node): boolean {
   if (node.type === "subscript") {
     const value = node.childForFieldName("value")?.text ?? "";

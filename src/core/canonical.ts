@@ -1,17 +1,15 @@
 /**
  * Type canonicalization.
  *
- * Types are never translated between languages: a TypeScript type stays a TypeScript type.
- * They are only normalized so that equal types compare equal, whichever side they come from:
+ * Types are never translated between languages, only normalized so equal types compare equal:
  *
- * - whitespace and comments are normalized (a small token-level pretty printer),
+ * - whitespace and comments are normalized,
  * - generic argument lists `<...>` become `[...]`,
  * - single-quoted string literals become double-quoted (when that needs no escaping),
  * - leading `|` / `&` and trailing separators before a closing bracket are dropped.
  *
- * In a sketch, a canonical type is written bare when it is a simple Python-compatible type
- * expression (`Promise[Invoice]`, `string | null`), and as a quoted string otherwise
- * (`'"draft" | "sent"'`, `'{ a: number }'`).
+ * A sketch writes a canonical type bare when it is a simple Python-compatible expression
+ * (`Promise[Invoice]`, `string | null`) and quoted otherwise (`'"draft" | "sent"'`).
  */
 
 import { isAbbreviatedType } from "./abbreviate.js";
@@ -75,7 +73,7 @@ function tokenize(input: string): Token[] {
       i++;
       continue;
     }
-    // comments (TypeScript)
+    // TypeScript comments.
     if (ch === "/" && input[i + 1] === "/") {
       while (i < n && input[i] !== "\n") i++;
       continue;
@@ -173,9 +171,7 @@ function isWordLike(t: Token | undefined): boolean {
   return t !== undefined && (t.kind === "word" || t.kind === "number" || t.kind === "string");
 }
 
-/**
- * Normalizes a type's text. The result is stable: canonicalType(canonicalType(x)) === canonicalType(x).
- */
+/** Normalizes a type's text. Idempotent: canonicalType(canonicalType(x)) === canonicalType(x). */
 export function canonicalType(input: string): string {
   const trimmed = input.trim();
   if (trimmed === INFERRED || trimmed === COMPLEX || isAbbreviatedType(trimmed)) return trimmed;
@@ -335,8 +331,8 @@ export function isPythonIdentifier(name: string): boolean {
 }
 
 /**
- * Maps a code identifier to a sketch identifier.
- * Python keywords get a trailing underscore (PEP 8), invalid characters such as `$` become `_`.
+ * Maps a code identifier to a sketch identifier: Python keywords get a trailing `_` (PEP 8),
+ * invalid characters such as `$` become `_`.
  */
 export function toSketchName(name: string): string {
   if (isPythonIdentifier(name)) return name;
