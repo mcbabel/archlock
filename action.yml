@@ -1,0 +1,89 @@
+name: archlock
+description: A lockfile for your architecture. Check the sketches in CI and comment architecture diffs on pull requests.
+author: archlock contributors
+branding:
+  icon: lock
+  color: green
+
+inputs:
+  mode:
+    description: "`check` (fail on architecture drift, with annotations) or `diff` (architecture diff as a sticky PR comment and job summary)."
+    required: false
+    default: check
+  working-directory:
+    description: Directory that contains archlock.config.json.
+    required: false
+    default: "."
+  version:
+    description: archlock version to run from npm.
+    required: false
+    default: latest
+  command:
+    description: Command that runs archlock, overriding `version` (e.g. `node dist/cli.js`).
+    required: false
+    default: ""
+  base:
+    description: "diff mode: git ref to compare with (default: the pull request's base branch)."
+    required: false
+    default: ""
+  comment:
+    description: "diff mode: post or update one sticky comment on the pull request."
+    required: false
+    default: "true"
+  github-token:
+    description: "Token for the PR comment. The default GITHUB_TOKEN needs `pull-requests: write`."
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  changes:
+    description: "diff mode: number of architecture changes."
+    value: ${{ steps.diff.outputs.changes }}
+
+runs:
+  using: composite
+  steps:
+    - name: archlock check
+      if: inputs.mode == 'check'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        ARCHLOCK_COMMAND: ${{ inputs.command }}
+        ARCHLOCK_VERSION: ${{ inputs.version }}
+      run: |
+        cmd="${ARCHLOCK_COMMAND:-npx --yes archlock@${ARCHLOCK_VERSION}}"
+        $cmd check --format github
+
+    - name: archlock diff
+      id: diff
+      if: inputs.mode == 'diff'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        ARCHLOCK_COMMAND: ${{ inputs.command }}
+        ARCHLOCK_VERSION: ${{ inputs.version }}
+        ARCHLOCK_BASE: ${{ inputs.base }}
+      run: |
+        cmd="${ARCHLOCK_COMMAND:-npx --yes archlock@${ARCHLOCK_VERSION}}"
+        # The base commit must be available locally.
+        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          git fetch --quiet --no-tags --unshallow origin || true
+        fi
+        if [ -n "$GITHUB_BASE_REF" ]; then
+          git fetch --quiet --no-tags origin "+refs/heads/$GITHUB_BASE_REF:refs/remotes/origin/$GITHUB_BASE_REF" || true
+        fi
+        base_args=()
+        if [ -n "$ARCHLOCK_BASE" ]; then base_args=(--base "$ARCHLOCK_BASE"); fi
+        $cmd diff "${base_args[@]}" --format markdown > "$RUNNER_TEMP/archlock-diff.md"
+        $cmd --json diff "${base_args[@]}" > "$RUNNER_TEMP/archlock-diff.json"
+        cat "$RUNNER_TEMP/archlock-diff.md" >> "$GITHUB_STEP_SUMMARY"
+        changes=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).changes.length)' "$RUNNER_TEMP/archlock-diff.json")
+        echo "changes=$changes" >> "$GITHUB_OUTPUT"
+
+    - name: archlock PR comment
+      if: inputs.mode == 'diff' && inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: node "$GITHUB_ACTION_PATH/action/comment.mjs" "$RUNNER_TEMP/archlock-diff.md"

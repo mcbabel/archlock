@@ -1,0 +1,89 @@
+{
+  "name": "archlock",
+  "version": "0.0.0",
+  "description": "A lockfile for your architecture. You own the design, your agent writes the code.",
+  "keywords": [
+    "architecture",
+    "lockfile",
+    "dependencies",
+    "api",
+    "ci",
+    "coding-agent",
+    "typescript",
+    "python"
+  ],
+  "homepage": "https://github.com/mcbabel/archlock#readme",
+  "bugs": {
+    "url": "https://github.com/mcbabel/archlock/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcbabel/archlock.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "archlock": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema.json": "./schema.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "schema.json",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check --error-on-warnings .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && node dist/cli.js check",
+    "archlock": "node dist/cli.js",
+    "changeset": "changeset",
+    "release": "pnpm build && changeset publish"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.1",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "commander": "^14.0.3",
+    "ignore": "^7.0.13",
+    "picocolors": "^1.1.1",
+    "picomatch": "^4.0.7",
+    "typescript": "^6.0.3",
+    "web-tree-sitter": "^0.25.10",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@changesets/cli": "^2.31.1",
+    "@types/node": "^20.19.43",
+    "@types/picomatch": "^4.0.3",
+    "tree-sitter-python": "0.25.0",
+    "tsup": "^8.5.1",
+    "vitest": "^4.1.12"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

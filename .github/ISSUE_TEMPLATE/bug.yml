@@ -1,0 +1,28 @@
+name: Bug report
+description: archlock did something wrong or crashed
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: archlock version
+      description: Output of `npx archlock --version`
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command you ran, what you expected, and what you got (paste the output).
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: A minimal repository or the source snippet and the generated sketch lines.
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Node version, language(s) of the project

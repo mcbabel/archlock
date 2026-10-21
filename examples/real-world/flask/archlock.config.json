@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/archlock/schema.json",
+  "version": 1,
+  "sketchDir": "archlock",
+  "languages": ["python"],
+  "include": ["src/flask/**"],
+  "exclude": [
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/__tests__/**",
+    "tests/**",
+    "**/test_*.py",
+    "**/*_test.py",
+    "**/conftest.py"
+  ],
+  "rules": {
+    "undeclared_dependency": "error",
+    "unused_dependency": "info",
+    "undeclared_external": "error",
+    "public_symbol_added": "error",
+    "planned_not_implemented": "error",
+    "signature_changed": "error",
+    "kind_changed": "error",
+    "deep_import": "warn",
+    "unassigned_file": "warn",
+    "dependency_cycle": "off"
+  },
+  "agent": {
+    "default": "claude",
+    "command": null,
+    "maxRounds": 3
+  }
+}

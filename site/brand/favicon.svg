@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="archlock"><title>archlock</title><style>.i{stroke:#162033}@media (prefers-color-scheme:dark){.i{stroke:#E6ECF5}}</style><g transform="translate(0 0) scale(1)">
+  <path d="M20 29V20a12 12 0 0 1 24 0v9" fill="none" class="i" stroke-width="5" stroke-linecap="round"/>
+  <path d="M12 29H52V56H12Z" fill="none" class="i" stroke-width="3.5" stroke-linejoin="round"/>
+  <g fill="#2F5BD3"><circle cx="12" cy="29" r="5.5"/><circle cx="52" cy="29" r="5.5"/><circle cx="12" cy="56" r="5.5"/><circle cx="52" cy="56" r="5.5"/></g>
+  <circle cx="32" cy="40" r="5.5" fill="#B86A00"/>
+  <path d="M32 44v5" stroke="#B86A00" stroke-width="4.5" stroke-linecap="round"/>
+</g></svg>

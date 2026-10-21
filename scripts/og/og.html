@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- Source of site/og.png (1200x630). Render: scripts/og/render.sh -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --paper: #f4f6f9; --surface: #fff; --ink: #162033; --muted: #4f5b70; --rule: #d5dce6; --plan: #2f5bd3; --drift: #9a5800; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1200px; height: 630px; }
+  body { background: var(--paper); color: var(--ink); font-family: "Fira Sans", sans-serif; display: grid; grid-template-columns: 1fr 460px; gap: 56px; padding: 64px 72px; }
+  .left { display: flex; flex-direction: column; }
+  .logo { width: 300px; }
+  h1 { font-size: 47px; line-height: 1.14; letter-spacing: -0.01em; font-weight: 700; margin: 48px 0 0; }
+  h1 span { display: block; margin-top: 10px; }
+  .url { margin: auto 0 0; padding-top: 28px; display: flex; align-items: center; gap: 28px; font-size: 26px; color: var(--muted); }
+  .url code { font: 600 22px "DejaVu Sans Mono", monospace; color: var(--ink); background: var(--surface); border: 2px solid var(--rule); border-radius: 8px; padding: 8px 14px; }
+  .right { display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+  .pane { background: var(--surface); border: 2px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .pane.sketch { border-top: 6px solid var(--plan); }
+  .pane.code { border-top: 6px solid var(--drift); }
+  .cap { display: flex; justify-content: space-between; padding: 12px 18px; border-bottom: 2px solid var(--rule); font: 18px "DejaVu Sans Mono", monospace; color: var(--muted); }
+  pre { margin: 0; padding: 16px 18px; font: 19px/1.5 "DejaVu Sans Mono", monospace; }
+  .k { color: var(--plan); } .c { color: var(--muted); font-style: italic; }
+  .arrows { display: flex; justify-content: center; gap: 64px; font: 700 22px "DejaVu Sans Mono", monospace; }
+  .push { color: var(--plan); } .accept { color: var(--drift); }
+</style>
+</head>
+<body>
+  <div class="left">
+    <img class="logo" src="../../site/brand/logo.svg" alt="">
+    <h1>A lockfile for your architecture. <span>You own the design, your agent writes the code.</span></h1>
+    <p class="url"><code>npx archlock init</code><span>archlock.mcbabel.de</span></p>
+  </div>
+  <div class="right">
+    <div class="pane sketch"><div class="cap"><span>billing.arch.py</span><span>sketch</span></div>
+<pre><span class="k">async def</span> markPaid(
+    invoiceId: InvoiceId,
+    paidAt: Date,
+) -&gt; Promise[Invoice]: ...</pre></div>
+    <div class="arrows"><span class="push">push ↓</span><span class="accept">accept ↑</span></div>
+    <div class="pane code"><div class="cap"><span>payments.ts</span><span>code</span></div>
+<pre><span class="k">export async function</span> markPaid(
+  invoiceId: InvoiceId,
+  paidAt: Date,
+): Promise&lt;Invoice&gt; { … }</pre></div>
+  </div>
+</body>
+</html>

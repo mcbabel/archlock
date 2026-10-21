@@ -1,0 +1,13 @@
+{
+  "name": "demo-shop",
+  "private": true,
+  "type": "module",
+  "description": "A small online shop used to demonstrate archlock.",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://archlock.mcbabel.de/sitemap.xml

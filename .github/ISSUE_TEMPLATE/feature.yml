@@ -1,0 +1,22 @@
+name: Feature request
+description: An idea to make archlock more useful
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How could archlock help? Example commands, sketches or output are welcome.
+  - type: checkboxes
+    id: core
+    attributes:
+      label: Core principles
+      options:
+        - label: The idea keeps the core deterministic and offline (no network, no LLM in init/check/accept/diff).

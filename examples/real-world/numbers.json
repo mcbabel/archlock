@@ -1,0 +1,20 @@
+{
+  "hono": {
+    "codeLines": 25971,
+    "sketchLines": 1743,
+    "modules": 19,
+    "symbols": 550
+  },
+  "zod": {
+    "codeLines": 45221,
+    "sketchLines": 5789,
+    "modules": 13,
+    "symbols": 1905
+  },
+  "flask": {
+    "codeLines": 7563,
+    "sketchLines": 542,
+    "modules": 3,
+    "symbols": 49
+  }
+}

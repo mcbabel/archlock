@@ -1,0 +1,41 @@
+# Runs archlock's own GitHub Action (action.yml) on this repository: the check mode with
+# annotations, and the diff mode, which comments on pull requests and writes the job summary.
+name: archlock
+
+on:
+  pull_request:
+  push:
+    branches: ["**"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  architecture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: archlock check (this action, check mode)
+        uses: ./
+        with:
+          mode: check
+          command: node ${{ github.workspace }}/dist/cli.js
+
+      - name: archlock diff (this action, diff mode)
+        if: github.event_name == 'pull_request' || github.event.before != '0000000000000000000000000000000000000000'
+        uses: ./
+        with:
+          mode: diff
+          command: node ${{ github.workspace }}/dist/cli.js
+          base: ${{ github.event_name == 'push' && github.event.before || '' }}

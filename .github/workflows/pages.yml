@@ -1,0 +1,46 @@
+name: Pages
+
+# Deploys site/ (the landing page) to GitHub Pages on pushes to the default branch.
+# Pages must be set to "GitHub Actions" once in the repository settings.
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          # This job installs nothing, so no pnpm cache (setup-node v5 would look for pnpm).
+          package-manager-cache: false
+      # The site must not show numbers that differ from README.md and examples/real-world.
+      - name: Check numbers
+        run: node scripts/check-numbers.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

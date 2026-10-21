@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.archlock-cache/
+*.log
+*.tgz
+.DS_Store
+scratch/

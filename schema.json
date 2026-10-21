@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://unpkg.com/archlock/schema.json",
+  "title": "archlock configuration",
+  "description": "Configuration for archlock, a lockfile for your architecture.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "description": "Config format version.",
+      "const": 1
+    },
+    "sketchDir": {
+      "description": "Directory (relative to this file) that holds the .arch.py sketches.",
+      "type": "string",
+      "minLength": 1,
+      "default": "archlock"
+    },
+    "languages": {
+      "description": "Languages to extract.",
+      "type": "array",
+      "items": { "enum": ["typescript", "python"] },
+      "uniqueItems": true
+    },
+    "include": {
+      "description": "Globs of source files archlock looks at (relative to this file).",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "exclude": {
+      "description": "Globs of source files to ignore. Test files are excluded by default.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "rules": {
+      "description": "Severity per violation type.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "undeclared_dependency": { "$ref": "#/definitions/severity", "default": "error" },
+        "unused_dependency": { "$ref": "#/definitions/severity", "default": "info" },
+        "undeclared_external": { "$ref": "#/definitions/severity", "default": "error" },
+        "public_symbol_added": { "$ref": "#/definitions/severity", "default": "error" },
+        "planned_not_implemented": { "$ref": "#/definitions/severity", "default": "error" },
+        "signature_changed": { "$ref": "#/definitions/severity", "default": "error" },
+        "kind_changed": { "$ref": "#/definitions/severity", "default": "error" },
+        "deep_import": { "$ref": "#/definitions/severity", "default": "warn" },
+        "unassigned_file": { "$ref": "#/definitions/severity", "default": "warn" },
+        "dependency_cycle": { "$ref": "#/definitions/severity", "default": "off" },
+        "sketch_invalid": { "const": "error" }
+      }
+    },
+    "maxTypeLength": {
+      "description": "Opt-in: types longer than this many characters are written to sketches as a placeholder with their first characters, length and a hash (e.g. '<\"A-IM\" | \"Accept\" | … (4635 chars, #9f247ce7)>'). check still detects any change. null (default) never abbreviates.",
+      "type": ["integer", "null"],
+      "minimum": 40,
+      "default": null
+    },
+    "agent": {
+      "description": "Coding agent used by `archlock push`, `audit` and `init --with-summaries`.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": { "enum": ["claude", "codex", "opencode", "custom"], "default": "claude" },
+        "command": {
+          "description": "Command template overriding the agent adapter. {prompt_file} is replaced with the path of the prompt file.",
+          "type": ["string", "null"],
+          "default": null
+        },
+        "maxRounds": { "type": "integer", "minimum": 1, "default": 3 },
+        "verifyCommands": {
+          "description": "Commands the agent may run during `archlock push` to verify its work, e.g. [\"npm test\", \"npx tsc --noEmit\"]. Each is allowed exactly and with extra arguments; the check command is always allowed and Claude Code refuses every other shell command. A test or build command lets the agent run code it wrote (edits are auto-accepted). No * ( ) , ; & | < > ` $.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "pattern": "^[^*(),;&|<>`$\\n\\r]+$" },
+          "default": []
+        }
+      }
+    }
+  },
+  "definitions": {
+    "severity": { "enum": ["error", "warn", "info", "off"] }
+  }
+}

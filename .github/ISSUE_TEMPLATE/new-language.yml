@@ -1,0 +1,27 @@
+name: New language
+description: Propose (or volunteer for) an extractor for another language
+labels: [new-language]
+body:
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      placeholder: Go
+    validations:
+      required: true
+  - type: textarea
+    id: parser
+    attributes:
+      label: Parser
+      description: Which parser would you use? It must not need native builds (WASM tree-sitter grammars are ideal).
+  - type: textarea
+    id: mapping
+    attributes:
+      label: Mapping to sketches
+      description: How do modules, public symbols, imports and types of this language map to the sketch format? See docs/FORMAT.md and CONTRIBUTING.md.
+  - type: checkboxes
+    id: volunteer
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to implement it.

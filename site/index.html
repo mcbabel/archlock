@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>archlock: a lockfile for your architecture</title>
+<meta name="description" content="archlock keeps your modules, their allowed dependencies and their public APIs in small sketch files you own, and fails CI when the code drifts from them. Works with Claude Code and other coding agents. TypeScript and Python, MIT.">
+<link rel="canonical" href="https://archlock.mcbabel.de/">
+<meta name="theme-color" content="#f4f6f9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1626" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="favicon.ico" sizes="32x32">
+<link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://archlock.mcbabel.de/">
+<meta property="og:title" content="archlock: a lockfile for your architecture">
+<meta property="og:description" content="You own the design, your agent writes the code. Sketch files for modules, dependencies and public APIs, enforced in CI.">
+<meta property="og:image" content="https://archlock.mcbabel.de/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="archlock logo, the line “A lockfile for your architecture. You own the design, your agent writes the code.” and a short sketch file.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+<script src="site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="wrap top">
+  <a href="./" aria-label="archlock home">
+    <picture>
+      <source srcset="brand/logo-dark.svg" media="(prefers-color-scheme: dark)">
+      <img src="brand/logo.svg" alt="archlock" width="152" height="27">
+    </picture>
+  </a>
+  <nav aria-label="Main">
+    <ul class="menu">
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#numbers">Real projects</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="https://github.com/mcbabel/archlock">GitHub</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main">
+<div class="wrap hero">
+  <div>
+  <h1>A lockfile for your architecture. <span>You own the design, your agent writes the code.</span></h1>
+  <p class="lede">Coding agents write code faster than anyone can review it. archlock keeps your modules, their allowed dependencies and their public APIs in small sketch files you own, and fails CI when the code drifts from them.</p>
+  <div class="actions">
+    <div class="install">
+      <code id="cmd">npx archlock init</code>
+      <button type="button" data-copy="npx archlock init" aria-describedby="cmd">Copy</button>
+    </div>
+    <a class="gh" href="https://github.com/mcbabel/archlock">Source on GitHub</a>
+    <span class="sr" role="status" id="copied"></span>
+  </div>
+  </div>
+
+  <div class="duo">
+    <figure class="pane sketch">
+      <figcaption><span>archlock/billing.arch.py</span><span>the sketch</span></figcaption>
+<pre><code><span class="ln"><span class="k">async def</span> markPaid(</span><span class="ln" style="--i:6">    deps: BillingDeps,</span><span class="ln" style="--i:6">    invoiceId: InvoiceId,</span><span class="ln" style="--i:6">    payment: PaymentRef,</span><span class="ln" style="--i:6">    paidAt: Date,</span><span class="ln">) -&gt; Promise[Invoice]:</span><span class="ln" style="--i:6">    <span class="c"># must: use paidAt from the payment provider,</span></span><span class="ln" style="--i:6">    <span class="c"># not the server clock</span></span><span class="ln" style="--i:6">    ...</span></code></pre>
+    </figure>
+    <ul class="arrows" aria-label="The two directions">
+      <li class="push"><span>push ↓</span><small>sketch to code</small></li>
+      <li class="accept"><span>accept ↑</span><small>code to sketch</small></li>
+    </ul>
+    <figure class="pane code">
+      <figcaption><span>src/billing/payments.ts</span><span>the code</span></figcaption>
+<pre><code><span class="ln"><span class="k">export async function</span> markPaid(</span><span class="ln" style="--i:4">  deps: BillingDeps,</span><span class="ln" style="--i:4">  invoiceId: InvoiceId,</span><span class="ln" style="--i:4">  payment: PaymentRef,</span><span class="ln" style="--i:4">  paidAt: Date,</span><span class="ln">): Promise&lt;Invoice&gt; {</span><span class="ln" style="--i:4">  <span class="k">const</span> invoice = invoices(deps).get(invoiceId);</span><span class="ln" style="--i:4">  <span class="k">if</span> (!invoice) <span class="k">throw new</span> Error(…);</span><span class="ln" style="--i:4">  …</span></code></pre>
+    </figure>
+  </div>
+</div>
+
+<section class="demo" aria-labelledby="demo-title">
+  <div class="wrap">
+    <h2 id="demo-title">One plan, one agent run, three lines to review</h2>
+    <p class="intro">The human plans a new module and a changed signature in the sketch. Claude Code writes the code and compiles it, <code>check</code> turns green, and <code>diff</code> shows the reviewer what changed in the architecture.</p>
+    <figure>
+      <video controls autoplay muted loop playsinline preload="metadata" poster="media/demo-poster.webp" width="1280" height="760" aria-label="Terminal recording of the archlock demo">
+        <source src="media/demo.webm" type="video/webm">
+        <source src="media/demo.mp4" type="video/mp4">
+      </video>
+      <figcaption>A real <code>archlock push --agent claude</code> run, not a recording of a scripted agent. Only the agent’s silent work is sped up, and the video says by how much (⏩ 81s).</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section aria-labelledby="dir-title">
+  <div class="wrap">
+    <h2 id="dir-title">Two directions, like a snapshot test</h2>
+    <p class="intro">When the code and a sketch disagree, <code>archlock check</code> tells you that and where. You decide which side is right.</p>
+    <div class="directions">
+      <div class="direction accept">
+        <h3><code>archlock accept</code></h3>
+        <p class="way">code → sketch</p>
+        <p>This code change is intended. Update the sketch, and keep every comment and invariant written in it.</p>
+      </div>
+      <div class="direction push">
+        <h3><code>archlock push</code></h3>
+        <p class="way">sketch → code</p>
+        <p>The sketch is the truth. archlock turns every difference into a work order and lets your agent change the code until <code>check</code> is green.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" aria-labelledby="how-title">
+  <div class="wrap">
+    <h2 id="how-title">How it works</h2>
+    <p class="intro">The demo project from the video, step by step. Every snippet below is real output.</p>
+    <ol class="steps">
+      <li>
+        <div>
+          <h3>Lock the architecture you have</h3>
+          <p><code>init</code> detects your modules and writes one sketch per module: its files, the modules it may import, and its public API with signatures. No model, no network.</p>
+        </div>
+<pre class="term"><code><span class="ln"><span class="p">$ </span>npx archlock init</span><span class="ln">Found 10 modules (subdirectories of src/):</span><span class="ln" style="--i:4">  api        src/api/**  6 public symbols, 5 dependencies</span><span class="ln" style="--i:4">  billing    src/billing/**  14 public symbols, 6 dependencies</span><span class="ln" style="--i:4">  cart       src/cart/**  13 public symbols, 3 dependencies</span><span class="ln" style="--i:4">  …</span><span class="ln">Wrote archlock.config.json, 10 sketches and README.md in archlock/</span><span class="ln" style="--i:3"> </span><span class="ln" style="--i:4">  751 lines of code → 253 lines of architecture (3.0×)</span></code></pre>
+      </li>
+      <li>
+        <div>
+          <h3>Plan the change in the sketch</h3>
+          <p>Change a signature, add a rule, or plan a whole module in a new sketch file. <code>check</code> now reports 7 errors: the plan is not implemented yet.</p>
+        </div>
+<pre class="term"><code><span class="ln" style="--i:4">  <b>archlock/billing.arch.py</b></span><span class="ln" style="--i:9">       payment: PaymentRef,</span><span class="ln"><span class="chg">- ) -&gt; Promise[Invoice]: ...</span></span><span class="ln"><span class="add">+     paidAt: Date,</span></span><span class="ln"><span class="add">+ ) -&gt; Promise[Invoice]:</span></span><span class="ln"><span class="add">+     # must: use paidAt from the payment provider, not the server clock</span></span><span class="ln"><span class="add">+     ...</span></span><span class="ln" style="--i:4">  <b>archlock/notifications.arch.py</b>  <span class="add">new module, see below</span></span></code></pre>
+      </li>
+      <li>
+        <div>
+          <h3>Let your agent write the code</h3>
+          <p><code>push</code> builds a precise work order from every difference, runs your agent headless, checks again, and repeats with what is left. It never commits.</p>
+        </div>
+<pre class="term"><code><span class="ln"><span class="p">$ </span>npx archlock push --agent claude</span><span class="ln"><b>archlock push: round 1/3: claude works on 7 changes</b></span><span class="ln">…</span><span class="ln">Round 1 took 1m 22s. Checking again…</span><span class="ln" style="--i:3"> </span><span class="ln"><b>archlock push: 1 round with claude</b></span><span class="ln" style="--i:4">  <span class="add">✔ done</span>  notifications.Channel: implemented</span><span class="ln" style="--i:4">  <span class="add">✔ done</span>  notifications.invoicePaidMessage: implemented</span><span class="ln" style="--i:4">  <span class="add">✔ done</span>  notifications.Message: implemented</span><span class="ln" style="--i:4">  <span class="add">✔ done</span>  notifications.Notifier: implemented</span><span class="ln" style="--i:4">  <span class="add">✔ done</span>  notifications.OutboxNotifier: implemented</span><span class="ln" style="--i:4">  <span class="add">✔ done</span>  notifications.registerNotifications: implemented</span><span class="ln" style="--i:4">  <span class="add">✔ done</span>  billing.markPaid: signature now matches the sketch</span><span class="ln">The code matches the sketches. Review the changes (git diff) and commit them.</span></code></pre>
+      </li>
+      <li>
+        <div>
+          <h3>Fail CI on drift</h3>
+          <p><code>check</code> runs in CI and exits with 1 when code and sketches disagree, with the file, the line and both versions. Here it is before the agent ran:</p>
+        </div>
+<pre class="term"><code><span class="ln"><span class="p">$ </span>npx archlock check</span><span class="ln">billing</span><span class="ln" style="--i:4">  <span class="d">✖ signature_changed</span>  function markPaid differs from the sketch</span><span class="ln" style="--i:8">      sketch: async def markPaid(deps: BillingDeps, invoiceId: InvoiceId, payment: PaymentRef, paidAt: Date) -&gt; Promise[Invoice]</span><span class="ln" style="--i:8">      code:   async def markPaid(deps: BillingDeps, invoiceId: InvoiceId, payment: PaymentRef) -&gt; Promise[Invoice]</span><span class="ln" style="--i:8">      at code src/billing/payments.ts:13 · sketch archlock/billing.arch.py:61</span><span class="ln">…</span><span class="ln">archlock check: 7 errors, 1 note</span></code></pre>
+      </li>
+      <li>
+        <div>
+          <h3>Review the architecture, not the noise</h3>
+          <p><code>diff</code> analyses the code of both commits, so architecture changes show up even if nobody ran <code>accept</code>. The GitHub Action posts it as one comment on the pull request.</p>
+        </div>
+<pre class="term"><code><span class="ln"><span class="p">$ </span>npx archlock diff</span><span class="ln"><b>archlock: 3 architecture changes</b> (compared with main @ ba498e1)</span><span class="ln"><span class="chg">~ billing.markPaid</span>  (deps, invoiceId, payment) → (deps, invoiceId, payment, paidAt: Date)</span><span class="ln"><span class="add">+ demo_shop</span>         new dependency: notifications</span><span class="ln"><span class="add">+ notifications</span>     new module (6 public symbols; depends on customers, events, shared)</span><span class="ln"><b>85 lines of code changed → 3 lines of architecture</b></span></code></pre>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section aria-labelledby="ex-title">
+  <div class="wrap">
+    <h2 id="ex-title">A sketch, and what reviewers see</h2>
+    <p class="intro">Sketches are valid Python syntax whatever your language, so they get highlighting everywhere, and people and LLMs read them easily. Types stay in your language: <code>Promise[void]</code> is TypeScript’s <code>Promise&lt;void&gt;</code>.</p>
+    <div class="example">
+      <figure class="pane sketch">
+        <figcaption><span>archlock/notifications.arch.py</span><span>planned in the demo</span></figcaption>
+<pre><code><span class="ln"><span class="c">"""Notifications: tell customers what happened to their orders."""</span></span><span class="ln" style="--i:3"> </span><span class="ln">__module__ = <span class="d">"notifications"</span></span><span class="ln">__paths__ = [<span class="d">"src/notifications/**"</span>]</span><span class="ln">__entry__ = <span class="d">"src/notifications/index.ts"</span></span><span class="ln">__depends_on__ = [<span class="d">"customers"</span>, <span class="d">"events"</span>, <span class="d">"shared"</span>]</span><span class="ln" style="--i:3"> </span><span class="ln"><span class="k">class</span> Channel(Enum):</span><span class="ln" style="--i:6">    Email = ...</span><span class="ln" style="--i:6">    Sms = ...</span><span class="ln" style="--i:3"> </span><span class="ln"><span class="k">class</span> Message(Protocol):</span><span class="ln" style="--i:6">    body: string</span><span class="ln" style="--i:6">    channel: Channel</span><span class="ln" style="--i:6">    subject: string</span><span class="ln" style="--i:6">    to: string</span><span class="ln" style="--i:3"> </span><span class="ln"><span class="k">class</span> Notifier(Protocol):</span><span class="ln" style="--i:6">    <span class="k">def</span> send(self, message: Message) -&gt; Promise[void]: ...</span><span class="ln" style="--i:3"> </span><span class="ln"><span class="k">class</span> OutboxNotifier(Notifier):</span><span class="ln" style="--i:6">    outbox: Readonly[<span class="d">'Message[]'</span>]</span><span class="ln" style="--i:6">    <span class="k">async def</span> send(self, message: Message) -&gt; Promise[void]: ...</span><span class="ln" style="--i:3"> </span><span class="ln"><span class="k">def</span> invoicePaidMessage(customer: Customer, invoiceId: InvoiceId, paidAt: Date) -&gt; Message: ...</span><span class="ln" style="--i:3"> </span><span class="ln"><span class="c"># must: send exactly one message per paid invoice</span></span><span class="ln"><span class="k">def</span> registerNotifications(events: EventBus, customers: CustomerRepository, notifier: Notifier) -&gt; <span class="d">'() =&gt; void'</span>: ...</span></code></pre>
+      </figure>
+      <div class="review">
+        <h3>What the pull request shows</h3>
+        <div class="comment">
+          <p class="who">The comment the GitHub Action posts for the demo change</p>
+          <h4>archlock: 3 architecture changes</h4>
+<pre class="term"><code><span class="ln"><span class="chg">! billing.markPaid</span>  (deps, invoiceId, payment) → (deps, invoiceId, payment, paidAt: Date)</span><span class="ln"><span class="add">+ demo_shop</span>         new dependency: notifications</span><span class="ln"><span class="add">+ notifications</span>     new module (6 public symbols; depends on customers, events, shared)</span></code></pre>
+          <p class="total">85 lines of code changed → 3 lines of architecture</p>
+        </div>
+        <p class="note"><strong>Hard contract</strong> (checked, can fail CI): modules, allowed dependencies, public symbols with their kind and signature. <strong>Soft contract</strong> (never fails CI): docstrings and comments like <code># invariant:</code>, <code># must:</code>, <code># never:</code>. <a href="https://github.com/mcbabel/archlock/blob/main/docs/FORMAT.md">The sketch format</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="numbers" aria-labelledby="num-title">
+  <div class="wrap">
+    <h2 id="num-title">On real projects</h2>
+    <p class="intro">Sketches of three well-known open-source projects at pinned commits, reproducible with one script. Flask is straight from <code>init</code>; Zod was split into its layers by hand afterwards, the way you would adjust your own modules.</p>
+    <div class="table">
+      <table class="stack">
+        <thead>
+          <tr><th scope="col">Project</th><th scope="col">Language</th><th scope="col" class="num">Modules</th><th scope="col" class="num">Code → architecture</th><th scope="col" class="num">Ratio</th><th scope="col"><code>check</code></th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row"><a href="https://github.com/mcbabel/archlock/tree/main/examples/real-world/hono/archlock">Hono</a></th><td data-label="Language">TypeScript</td><td data-label="Modules" class="num">19</td><td data-label="Code → architecture" class="num">25,971 → 1,743 lines</td><td data-label="Ratio" class="num">15×</td><td data-label="check">0 errors, 81 deep-import warnings</td></tr>
+          <tr><th scope="row"><a href="https://github.com/mcbabel/archlock/tree/main/examples/real-world/zod/archlock">Zod</a></th><td data-label="Language">TypeScript</td><td data-label="Modules" class="num">13</td><td data-label="Code → architecture" class="num">45,221 → 5,789 lines</td><td data-label="Ratio" class="num">7.8×</td><td data-label="check">0 errors, 6 deep-import warnings</td></tr>
+          <tr><th scope="row"><a href="https://github.com/mcbabel/archlock/tree/main/examples/real-world/flask/archlock">Flask</a></th><td data-label="Language">Python</td><td data-label="Modules" class="num">3</td><td data-label="Code → architecture" class="num">7,563 → 542 lines</td><td data-label="Ratio" class="num">14×</td><td data-label="check">0 errors, 14 warnings, cycle <code>flask → json → sansio</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Lines are non-blank lines of non-test source files and of the sketches. The warnings are real observations about each project, explained in <a href="https://github.com/mcbabel/archlock/tree/main/examples/real-world">examples/real-world</a>.</p>
+  </div>
+</section>
+
+<section aria-labelledby="cmp-title">
+  <div class="wrap">
+    <h2 id="cmp-title">How it compares</h2>
+    <p class="intro">These tools fit together: many teams will want detailed lint rules and a reviewed sketch.</p>
+    <div class="table">
+      <table class="stack">
+        <thead><tr><th scope="col">Tool</th><th scope="col">What it does well</th><th scope="col">What archlock adds</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">dependency-cruiser, eslint-plugin-boundaries, Nx module boundaries</th><td data-label="Does well">Rich, configurable import rules for JS/TS.</td><td data-label="archlock adds">Public signatures as part of the contract; rules in a readable sketch next to the API they protect; Python; the way back from sketch to code.</td></tr>
+          <tr><th scope="row">import-linter</th><td data-label="Does well">Layer and independence contracts for Python imports.</td><td data-label="archlock adds">The same idea across languages, plus public APIs and signatures.</td></tr>
+          <tr><th scope="row">API Extractor</th><td data-label="Does well">Precise API reports of a TypeScript package, checked in CI.</td><td data-label="archlock adds">Per module inside one repository, includes dependencies, edited by humans and agents, works for Python.</td></tr>
+          <tr><th scope="row">Spec Kit and other spec-driven tools</th><td data-label="Does well">Prose specifications that guide an agent from spec to code.</td><td data-label="archlock adds">Code-shaped instead of prose, both directions, enforced in CI.</td></tr>
+          <tr><th scope="row">Architecture diagram and code-map tools</th><td data-label="Does well">Views of a codebase for people or agents.</td><td data-label="archlock adds">Not a view but an enforced contract that fails CI on drift.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="faq" aria-labelledby="faq-title">
+  <div class="wrap">
+    <h2 id="faq-title">Questions</h2>
+    <div class="faq">
+      <details>
+        <summary>Does it need an API key?</summary>
+        <p>No. <code>init</code>, <code>check</code>, <code>accept</code>, <code>diff</code>, <code>stats</code>, <code>graph</code> and <code>mcp</code> are deterministic and offline: same input, byte-identical output, no model, no network, no telemetry. Only <code>push</code> (and the optional <code>init --with-summaries</code>) start the coding agent you already use.</p>
+      </details>
+      <details>
+        <summary>Which agents?</summary>
+        <p><code>push</code> is tested end to end with <strong>Claude Code</strong>: on the demo it needs one round of one to two minutes, and the agent compiles what it writes. <strong>Codex CLI</strong> and <strong>OpenCode</strong> are supported (their flags are checked against their <code>--help</code>) but not yet battle-tested. Any other agent works through a command template, or paste the work order from <code>archlock push --print-prompt</code>. There is also an MCP server (<code>archlock mcp</code>), an agent skill and an <code>AGENTS.md</code>/<code>CLAUDE.md</code> section (<code>archlock init --agents</code>).</p>
+      </details>
+      <details>
+        <summary>Which languages?</summary>
+        <p>TypeScript and JavaScript (<code>.ts .tsx .mts .cts .js .jsx .mjs .cjs</code>, tsconfig <code>paths</code>, pnpm/npm/yarn workspaces) and Python (src and flat layouts, <code>__all__</code>, dataclasses, Protocols, Enums), also mixed in one repository. More languages are on the roadmap; the extractor interface is small.</p>
+      </details>
+      <details>
+        <summary>What does it not do yet?</summary>
+        <ul>
+          <li>Extraction is syntactic: without annotations a type is <code>'&lt;inferred&gt;'</code> (4–7% of type positions in the real-world projects). A mode using the TypeScript type checker is planned, not built.</li>
+          <li>Module detection is a starting point: one large package becomes one module until you split it with <code>__paths__</code>.</li>
+          <li>No edges across languages: a TypeScript app calling a Python API over HTTP is not an import.</li>
+          <li><code>push</code> has only needed one round with a real agent so far; more rounds are tested with a scripted test agent.</li>
+          <li>The full list: <a href="https://github.com/mcbabel/archlock/blob/main/docs/LIMITATIONS.md">known limitations</a>.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>How fast is it?</summary>
+        <p>About 2.8 seconds for <code>check</code> on a 93,000-line repository without cache, 1.2 seconds with the file-hash cache. <code>init</code> on Hono takes 0.6 seconds on a desktop PC.</p>
+      </details>
+      <details>
+        <summary>Does it rewrite my code?</summary>
+        <p>Only <code>push</code> changes code, through your agent, and it never commits. It warns about uncommitted changes first, so you can review exactly what the agent did.</p>
+      </details>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="wrap foot">
+  <p>archlock is open source under the MIT license.</p>
+  <ul class="links">
+    <li><a href="https://github.com/mcbabel/archlock">GitHub</a></li>
+    <li><a href="https://www.npmjs.com/package/archlock">npm</a></li>
+    <li><a href="https://github.com/mcbabel/archlock/blob/main/docs/AGENTS.md">Agent docs</a></li>
+    <li><a href="https://github.com/mcbabel/archlock/blob/main/LICENSE">License</a></li>
+  </ul>
+</footer>
+</body>
+</html>
