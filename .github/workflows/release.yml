@@ -40,7 +40,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: "true"
+          # Provenance is enabled once, by publishConfig.provenance in package.json.
+          # npm passes fetch-retries to Sigstore, which then retries the (non-idempotent) upload of
+          # the provenance entry to the transparency log. If the log stored the entry but the
+          # response was lost, the retry fails with 409 TLOG_CREATE_ENTRY_ERROR and the package is
+          # not published. Without retries the entry is submitted exactly once; a failed publish
+          # can simply be re-run, because nothing reaches npm before the entry is logged.
+          NPM_CONFIG_FETCH_RETRIES: "0"
 
       # The GitHub Action is referenced as mcbabel/archlock@v0: move that tag to each release.
       - name: Move the v0 tag for the GitHub Action
