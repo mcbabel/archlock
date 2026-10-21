@@ -628,7 +628,7 @@ interface MethodFlags {
   optional: boolean;
 }
 
-/** Collects members; a later field with the same name (e.g. accessor pairs) replaces nothing. */
+/** Collects members in order; for duplicate field names (e.g. accessor pairs) the first wins. */
 class MemberCollector {
   private readonly members: Member[] = [];
   add(member: Member): void {

@@ -1,6 +1,5 @@
-// A RECORDED agent run, used to make the demo reproducible and independent of LLM latency.
-// It applies the exact code changes a coding agent produced for the work order
-// (`archlock push` passes the work order file as the first argument).
+// Replays a recorded agent run so the demo test is reproducible without an LLM.
+// `archlock push` passes the work order file as the first argument.
 import { cpSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

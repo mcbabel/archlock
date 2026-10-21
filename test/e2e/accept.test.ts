@@ -115,7 +115,7 @@ describe("archlock stats and graph", () => {
       edges: 4,
     });
     expect(data.badge).toContain("https://img.shields.io/badge/architecture-4%20modules");
-    // The fixture is small: a neutral note instead of a ratio (see test/report/format.test.ts).
+    // The fixture is below 300 lines, so stats prints a note instead of a ratio.
     expect((await archlock(dir, "stats")).stdout).toMatch(
       /^\d+ lines of code \(no compression ratio below 300 lines\)$/m,
     );

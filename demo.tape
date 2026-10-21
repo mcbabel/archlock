@@ -1,19 +1,14 @@
 # archlock demo: init → edit the sketch → push → check → diff
 #
-# Render with charmbracelet/vhs from the repository root, after `pnpm build`, with Claude Code
+# Render with charmbracelet/vhs from the repository root after `pnpm build`, with Claude Code
 # installed and signed in (`claude auth status`):
 #   vhs demo.tape
 #
-# Everything in this recording runs for real, including the agent: `archlock push --agent claude`
-# starts Claude Code, which writes the code. Its output differs a little from run to run.
-# The only edit is time: while the agent works (typically 60-90 s, with no output), the frames
-# are hidden. .demo/fast-forward.mjs prints "⏩ 83s" where the output resumes and the total at
-# the end, so the GIF says exactly how much waiting it skipped.
-# After `init`, a hidden step copies the demo's committed archlock.config.json, which differs from
-# the generated one only by "verifyCommands": ["npx tsc --noEmit -p ."]: the agent may compile
-# its own code (TypeScript is a devDependency of the demo, installed by setup.sh).
-# (The recorded agent run in .demo/replay-agent.mjs is only used by the CI test
-# test/e2e/demo.test.ts, which must not depend on an LLM.)
+# The agent run is real, so the output varies between runs. Frames are hidden while the agent
+# works silently; .demo/fast-forward.mjs prints the skipped time on screen.
+# After `init`, a hidden step copies the demo's committed archlock.config.json, which adds
+# "verifyCommands": ["npx tsc --noEmit -p ."] so the agent can compile its code.
+# .demo/replay-agent.mjs (a recorded run) is used only by test/e2e/demo.test.ts.
 
 Output docs/demo.gif
 

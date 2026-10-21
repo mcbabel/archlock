@@ -1,6 +1,6 @@
 /**
- * The deterministic core as functions: used by the CLI, the MCP server and `push`.
- * No network, no LLM, no clock: same repository state, same result.
+ * Deterministic core operations shared by the CLI, the MCP server and `push`.
+ * No network, LLM or clock access: the same repository state gives the same result.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -59,7 +59,7 @@ export async function openWorkspace(cwd: string, options: OpenOptions = {}): Pro
       `the sketch directory "${loaded.config.sketchDir}/" does not exist. Run \`archlock init\` to create it, or fix "sketchDir" in ${loaded.file}.`,
     );
   }
-  // Sketches are abbreviated like the code (copies: the parse cache keeps the originals).
+  // Abbreviate copies so the parse cache keeps the original sketches.
   const max = loaded.config.maxTypeLength;
   if (max !== null) {
     sketches.sketches = sketches.sketches.map((s) => ({
@@ -140,7 +140,7 @@ export async function diffWorkspace(ws: Workspace, baseRef?: string): Promise<Di
         if (baseWs.sketches.sketches.length > 0)
           specs = specsFromSketches(baseWs.sketches.sketches);
       } catch {
-        // An unreadable base setup: compare with the head's module definitions instead.
+        // Unreadable base setup: fall back to the head's module definitions.
       }
     }
     return (await architectureOf(dir, config, specs)).state;
@@ -160,7 +160,7 @@ export async function diffWorkspace(ws: Workspace, baseRef?: string): Promise<Di
       try {
         codeLinesChanged += countLines(readFileSync(join(ws.root, file), "utf8"));
       } catch {
-        // unreadable untracked file: ignore
+        // Skip unreadable untracked files.
       }
     }
   }

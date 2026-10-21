@@ -1,12 +1,12 @@
-// Fails when the key numbers disagree between README.md, the site and examples/real-world.
-// Source of truth: examples/real-world/numbers.json (written by examples/real-world/regenerate.sh)
-// and package.json (version). Optional folders that do not exist (launch/, docs/) are skipped.
-// Run: node scripts/check-numbers.mjs
+// Fails when the key numbers in README.md, the site and examples/real-world disagree with
+// examples/real-world/numbers.json and package.json (version).
+// Missing launch/ and docs/ folders are skipped.
+// Usage: node scripts/check-numbers.mjs
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** The same formatting archlock uses (src/report/format.ts). */
+/** Same formatting as src/report/format.ts. */
 export function formatNumber(n) {
   return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }

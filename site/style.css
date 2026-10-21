@@ -1,6 +1,5 @@
-/* archlock site. Design tokens: two accents with meaning, one type scale (ratio 1.25).
-   plan  = the sketch side and `push` (sketch → code)
-   drift = the code side and `accept` (code → sketch), and everything check reports */
+/* Design tokens. --plan marks the sketch side and `push`, --drift the code side, `accept` and
+   check results. Type scale ratio: 1.25. */
 
 :root {
   color-scheme: light dark;
@@ -281,7 +280,7 @@ p {
   font-weight: 600;
 }
 
-/* The two directions: sketch ⇄ code (the hero's one bold element) */
+/* Hero: sketch and code panes */
 
 .duo {
   display: grid;

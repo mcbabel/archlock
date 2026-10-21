@@ -1,6 +1,6 @@
 import type { Row } from "./types.js";
 
-/** An in-memory table. Good enough for a demo, same shape as a real repository layer. */
+/** An in-memory table with the same interface as a database-backed repository. */
 export class Table<T extends Row> {
   private readonly rows = new Map<string, T>();
 

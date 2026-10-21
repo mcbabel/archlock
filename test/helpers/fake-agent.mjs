@@ -1,6 +1,7 @@
 // A stand-in for a coding agent: applies scripted file edits, one round per invocation.
 // Usage (as agent.command): node fake-agent.mjs <prompt_file>
-// FAKE_AGENT_PLAN: JSON file with { "rounds": [[{ "file", "find", "replace" } | { "file", "write" }]] }
+// FAKE_AGENT_PLAN: JSON file with
+//   { "rounds": [[{ "file", "find", "replace" } | { "file", "write" }]] }
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 

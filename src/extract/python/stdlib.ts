@@ -1,4 +1,4 @@
-/** Top-level modules of the Python standard library (3.8–3.13): imports of these are never dependencies. */
+/** Top-level standard-library modules (Python 3.8–3.13); importing them is never a dependency. */
 export const PYTHON_STDLIB: ReadonlySet<string> = new Set([
   "__future__",
   "__main__",

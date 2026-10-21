@@ -141,7 +141,7 @@ export async function runPushCommand(ctx: Context, opts: PushOptions): Promise<n
     }
   }
 
-  // archlock's own cache (where the work order is written) is not the user's change.
+  // The cache holds the work order; changes there are not the user's.
   const dirty = uncommittedChanges(ws.root, [
     ws.config.sketchDir,
     relPosix(ws.root, cacheDir(ws.root)),

@@ -69,7 +69,7 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
   }
 
   out.push("## Changes to make", "");
-  // A new module is introduced once, at its first symbol, not repeated for every symbol.
+  // A new module is introduced once, at its first planned symbol.
   const planned = new Map<string, number>();
   for (const v of todo)
     if (v.rule === "planned_not_implemented" && v.module)

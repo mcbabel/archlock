@@ -1,5 +1,5 @@
-// The human part of the demo: plan a `notifications` module and change `billing.markPaid`
-// by editing the sketches (what you would do in your editor).
+// The manual step of the demo: plan a `notifications` module and change `billing.markPaid`
+// by editing the sketches.
 import { readFileSync, writeFileSync } from "node:fs";
 
 function edit(file, from, to) {

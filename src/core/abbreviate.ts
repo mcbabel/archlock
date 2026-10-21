@@ -1,12 +1,9 @@
 /**
- * Opt-in abbreviation of very long types (`maxTypeLength` in the config).
+ * Opt-in abbreviation of long types (`maxTypeLength`).
  *
- * A canonical type longer than the limit becomes a placeholder such as
- * `<"A-IM" | "Accept" | "Accept-Additions" … (4664 chars, #3f9a1c2e)>`: the type's first
- * characters for the reader, its length, and the first 8 hex digits of its SHA-256 for the
- * comparison. Code and sketches are abbreviated by the same function, so `check` still compares
- * plain strings: the placeholder matches exactly when the full type is unchanged, and a sketch
- * may also spell the full type out. Deterministic, no state.
+ * A type over the limit becomes `<head … (N chars, #sha256-prefix)>`, e.g.
+ * `<"A-IM" | "Accept" … (4664 chars, #3f9a1c2e)>`. Code and sketches go through the same
+ * function, so the placeholder compares equal exactly when the full type is unchanged.
  */
 
 import { createHash } from "node:crypto";

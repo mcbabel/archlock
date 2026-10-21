@@ -1,10 +1,9 @@
 /**
- * `archlock accept`: code model + existing sketch → new sketch.
+ * `archlock accept`: merges the code model into an existing sketch.
  *
- * Hard content (dependencies, symbols, signatures) comes from the code. Everything a human
- * wrote is kept: docstrings, comments, invariants, `__strictness__`, `__paths__`, `__entry__`,
- * and whether `__external__` is checked. Comments are matched to symbols by key (kind + name),
- * independent of order. Comments of symbols that no longer exist are returned as `lost`.
+ * Dependencies, symbols and signatures come from the code. Human-written content is kept:
+ * docstrings, comments, `__strictness__`, `__paths__`, `__entry__` and whether `__external__`
+ * is checked. Comments follow symbols by kind + name; those of removed symbols are `lost`.
  */
 
 import {
@@ -56,8 +55,7 @@ function cloneSoft(soft: Soft): Soft {
 }
 
 /**
- * @param sketch the current sketch
- * @param code the sketch as it would be generated from the code (no soft content)
+ * @param code the sketch as generated from the code (no soft content)
  * @param externals external packages the module's code uses (sorted)
  */
 export function mergeModule(
