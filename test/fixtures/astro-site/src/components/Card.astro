@@ -1,0 +1,13 @@
+---
+import Badge from "./Badge.astro";
+import Counter from "./Counter.svelte";
+
+interface Props {
+  title: string;
+  href?: string;
+}
+
+const { title, href = "#" } = Astro.props;
+---
+
+<a href={href}><Badge label={title} /><Counter client:load /></a>

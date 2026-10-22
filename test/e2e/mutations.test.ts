@@ -198,3 +198,124 @@ describe("targeted changes produce exactly the expected violation (ts-single)", 
     });
   }
 });
+
+interface ComponentMutation extends Mutation {
+  fixture: "vue-app" | "svelte-app" | "astro-site" | "nuxt-app";
+}
+
+const componentMutations: ComponentMutation[] = [
+  {
+    name: "Vue: a new prop changes the component's signature",
+    fixture: "vue-app",
+    apply: (d) =>
+      edit(d, "src/components/UserCard.vue", "  user: User;", "  user: User;\n  avatar?: string;"),
+    expected: [{ rule: "signature_changed", module: "components", symbol: "UserCard" }],
+  },
+  {
+    name: "Vue: a removed event changes the component's signature",
+    fixture: "vue-app",
+    apply: (d) => edit(d, "src/components/UserCard.vue", '  (e: "close"): void;\n', ""),
+    expected: [{ rule: "signature_changed", module: "components", symbol: "UserCard" }],
+  },
+  {
+    name: "Vue: a component importing another module is a new dependency",
+    fixture: "vue-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/stores/users.ts",
+        /^/,
+        'import BaseButton from "@/components/BaseButton.vue";\nvoid BaseButton;\n',
+      ),
+    expected: [{ rule: "undeclared_dependency", module: "stores" }],
+  },
+  {
+    name: "Nuxt: an import through the ~ alias is a dependency",
+    fixture: "nuxt-app",
+    apply: (d) =>
+      edit(
+        d,
+        "utils/format.ts",
+        /^/,
+        'import { useCart } from "~/composables/useCart";\nvoid useCart;\n',
+      ),
+    expected: [{ rule: "undeclared_dependency", module: "utils" }],
+  },
+  {
+    name: "Vue: a new component file is a new public symbol",
+    fixture: "vue-app",
+    apply: (d) => write(d, "src/components/Avatar.vue", "<template><img /></template>\n"),
+    expected: [{ rule: "public_symbol_added", module: "components", symbol: "Avatar" }],
+  },
+  {
+    name: "Svelte: a new $props() field changes the component's signature",
+    fixture: "svelte-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/lib/components/Counter.svelte",
+        "    start?: number;",
+        "    start?: number;\n    step: number;",
+      ),
+    expected: [
+      { rule: "signature_changed", module: "lib", symbol: "Counter" },
+      { rule: "deep_import", module: "routes" },
+    ],
+  },
+  {
+    name: "Svelte: a new `export let` prop changes the component's signature",
+    fixture: "svelte-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/lib/components/Legacy.svelte",
+        "  export let count = 0;",
+        "  export let count = 0;\n  export let open: boolean;",
+      ),
+    expected: [
+      { rule: "signature_changed", module: "lib", symbol: "Legacy" },
+      { rule: "deep_import", module: "routes" },
+    ],
+  },
+  {
+    name: "Astro: a new Props member changes the component's signature",
+    fixture: "astro-site",
+    apply: (d) =>
+      edit(
+        d,
+        "src/components/Card.astro",
+        "  href?: string;",
+        "  href?: string;\n  image: string;",
+      ),
+    expected: [{ rule: "signature_changed", module: "components", symbol: "Card" }],
+  },
+  {
+    name: "Astro: an import in a client script is a dependency",
+    fixture: "astro-site",
+    apply: (d) =>
+      edit(
+        d,
+        "src/components/Badge.astro",
+        /$/,
+        '\n<script>\n  import { track } from "../lib/analytics";\n  track("badge");\n</script>\n',
+      ),
+    expected: [{ rule: "undeclared_dependency", module: "components" }],
+  },
+];
+
+describe("targeted changes to components produce exactly the expected violation", () => {
+  for (const m of componentMutations) {
+    it(m.name, async () => {
+      const dir = copyFixture(m.fixture);
+      expect((await archlock(dir, "init", "--yes")).code).toBe(0);
+      m.apply(dir);
+      const result = await checkJson(dir);
+      const got = result.violations.map((v) => ({
+        rule: v.rule,
+        module: v.module,
+        ...(v.symbol ? { symbol: v.symbol } : {}),
+      }));
+      expect(got).toEqual(m.expected);
+    });
+  }
+});

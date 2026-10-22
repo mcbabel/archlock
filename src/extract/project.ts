@@ -70,6 +70,21 @@ const ENTRY_NAMES = [
   "__init__.py",
 ];
 
+/**
+ * A file's path inside its module as an identifier prefix:
+ * `src/ui/button/button.svelte` in `src/**` → `ui_button_button`.
+ */
+function filePrefix(spec: ModuleSpec, file: string): string {
+  let base = "";
+  for (const p of spec.paths) {
+    if (p.startsWith("!") || !globMatcher([p])(file)) continue;
+    const b = globBase(p);
+    if (b.length > base.length) base = b;
+  }
+  const rel = base === "" ? file : file.slice(base.length + 1);
+  return toSketchName(rel.replace(/\.[^./]+$/, "").replace(/\//g, "_"));
+}
+
 /** Default entry candidates: `index.*` or `__init__.py` in the module root or its `src/`. */
 export function defaultEntryCandidates(spec: ModuleSpec): string[] {
   const base = spec.paths.find((p) => !p.startsWith("!"));
@@ -313,6 +328,7 @@ export function buildProject(
         else if (owner !== null && owner !== mod.name) addReexport(name, owner);
       }
     } else {
+      const found: { file: string; name: string; def: Def & { kind: "decl" } }[] = [];
       for (const file of mod.files) {
         const f = files.get(file) as FileFacts;
         const names = [...f.exports.keys()].sort(compareNames);
@@ -333,8 +349,19 @@ export function buildProject(
                 ? def.local
                 : posix.basename(file).replace(/\.[^.]+$/, "")
               : name;
-          addSymbol(exportName, def);
+          found.push({ file, name: toSketchName(exportName), def });
         }
+      }
+      // A name defined in several files is qualified with each file's path in the module.
+      const filesOf = new Map<string, Set<string>>();
+      for (const { file, name } of found) {
+        const set = filesOf.get(name) ?? new Set();
+        set.add(file);
+        filesOf.set(name, set);
+      }
+      for (const { file, name, def } of found) {
+        const shared = (filesOf.get(name) as Set<string>).size > 1;
+        addSymbol(shared ? `${filePrefix(mod.spec, file)}__${name}` : name, def);
       }
     }
     mod.symbols = [...symbols.values()];

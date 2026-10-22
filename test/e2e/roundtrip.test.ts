@@ -10,11 +10,23 @@ import {
   snapshotDir,
 } from "../helpers/fixtures.js";
 
-const FIXTURES = ["ts-single", "ts-monorepo", "ts-edge", "py-src", "py-flat", "mixed"];
+const FIXTURES = [
+  "ts-single",
+  "ts-monorepo",
+  "ts-edge",
+  "py-src",
+  "py-flat",
+  "mixed",
+  "vue-app",
+  "svelte-app",
+  "astro-site",
+  "nuxt-app",
+];
 
 /** Warnings a fixture contains on purpose (edge cases); errors are never expected. */
 const EXPECTED_WARNINGS: Record<string, string[]> = {
   "py-flat": ["deep_import:api"],
+  "svelte-app": ["deep_import:routes"],
 };
 
 afterAll(cleanupFixtures);
