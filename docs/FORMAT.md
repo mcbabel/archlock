@@ -93,6 +93,33 @@ Enum members keep their source order because it can be meaningful.
 
 Private members (`private`, `#x`) are not part of the sketch.
 
+### Mapping from components (Vue, Svelte, Astro)
+
+`.vue`, `.svelte` and `.astro` files are read through their scripts: Vue's `<script>` and
+`<script setup>`, Svelte's instance and module scripts, and Astro's frontmatter plus its
+bundled client `<script>`s. Their imports are dependencies like any TypeScript import. The
+component itself is a public symbol named after its file (`user-card.vue` → `UserCard`,
+`dialog/index.vue` → `Dialog`), a class whose fields are its props and its events:
+
+| Component | Sketch |
+|---|---|
+| a Vue / Svelte / Astro component | `class UserCard(VueComponent):` / `(SvelteComponent)` / `(AstroComponent)` |
+| a prop `title: string` / optional prop `size?: number` | `title: string` / `size: Opt[number]` |
+| props from an imported type (`defineProps<BaseProps>()`, `$props()` typed with it) | a base: `class Card(VueComponent, BaseProps):` |
+| Vue runtime props `{ name: { type: String, required: true }, meta: Object }` | `name: string`, `meta: Opt[Record[string, unknown]]` |
+| Vue props or emits from an object (`defineProps(buttonProps)`) | a base: `'typeof buttonProps'` |
+| an event `change` with payload `(value: string)` | `onChange: Opt['(value: string) => void']` |
+| Vue `update:modelValue`, `calendar-change` | `self["onUpdate:modelValue"]`, `onCalendarChange` (Vue's listener names) |
+| Vue `defineModel<boolean>()` | `modelValue: Opt[boolean]` plus its `onUpdate:modelValue` event |
+| Svelte 4 `export let value: number` / `createEventDispatcher<{ commit: number }>()` | `value: number` / `onCommit: Opt['(event: CustomEvent[number]) => void']` |
+| `<script setup generic="T">`, Svelte `generics="T"` | `class List[T](VueComponent):` |
+| other exports (Vue's plain `<script>`, Svelte's module script, Astro frontmatter) | as in TypeScript |
+
+Local `interface`s and type aliases are expanded into fields, also across `&` and `extends`;
+types defined elsewhere become bases. Untyped props (`let { text } = $props()`) are
+`'<inferred>'`. Route files are not components: files whose name starts with `+` (SvelteKit)
+and files under a `pages/` directory (Astro, Nuxt) keep only their other exports.
+
 ### Mapping from Python
 
 Python maps almost 1:1: functions, classes, `Protocol`s, `Enum`s and dataclass fields keep their
@@ -173,6 +200,10 @@ confused: `wrapped: 'Readonly[Foo]'`.
 Sketch names are Python identifiers. Code names that are Python keywords get a trailing
 underscore (`from` → `from_`), other invalid characters become `_` (`user$` → `user_`). Fields
 with names that are not identifiers use subscript syntax: `self["content-type"]: string`.
+
+In a module without an entry, a name that several files define is qualified with each file's
+path inside the module, so none of them is hidden: `ui/button/button.svelte` and
+`demo/button.svelte` in `src/**` give `ui_button_button__Button` and `demo_button__Button`.
 
 ## Parameters
 

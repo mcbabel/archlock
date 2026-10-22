@@ -10,7 +10,8 @@ OpenCode are supported (flags checked against their `--help`) but not yet battle
 other agent works through `agent.command`, or paste the output of `archlock push --print-prompt`.
 Details: [AGENTS.md](AGENTS.md).
 
-**Which languages?** TypeScript/JavaScript and Python, also mixed. See
+**Which languages?** TypeScript/JavaScript (including Vue, Svelte and Astro components) and
+Python, also mixed. See
 [COMMANDS.md](COMMANDS.md#languages).
 
 **Does it send data anywhere?** No telemetry, no service. See [SECURITY.md](../SECURITY.md).

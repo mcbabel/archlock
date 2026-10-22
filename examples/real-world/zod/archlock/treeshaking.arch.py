@@ -3,4 +3,6 @@ __paths__ = ["packages/treeshake/**"]
 __depends_on__ = ["zod"]
 
 rollup_config: '<inferred>'
-schema: '<inferred>'
+zod3_full__schema: '<inferred>'
+zod_full__schema: '<inferred>'
+zod_mini_full__schema: '<inferred>'

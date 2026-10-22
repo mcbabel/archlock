@@ -25,6 +25,8 @@ exclude globs, the severity of every violation type, the opt-in `maxTypeLength`
 ## Languages
 
 **TypeScript/JavaScript** (`.ts .tsx .mts .cts .js .jsx .mjs .cjs`, tsconfig `paths`,
-pnpm/npm/yarn workspaces) and **Python** (src and flat layouts, `__all__`, dataclasses,
-Protocols, Enums), also mixed in one repository. Adding a language:
+pnpm/npm/yarn workspaces), **Vue, Svelte and Astro components** (`.vue .svelte .astro`: their
+scripts are read as TypeScript, props and events are the component's signature; see
+[FORMAT.md](FORMAT.md#mapping-from-components-vue-svelte-astro)) and **Python** (src and flat
+layouts, `__all__`, dataclasses, Protocols, Enums), also mixed in one repository. Adding a language:
 [CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-language).

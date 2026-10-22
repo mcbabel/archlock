@@ -67,6 +67,19 @@ the config (the work order then asks the agent to run them too):
 "agent": { "default": "claude", "command": null, "maxRounds": 3, "verifyCommands": ["npm test", "npx tsc --noEmit"] }
 ```
 
+Pick the type checker of your stack; `push` suggests one after a run without `verifyCommands`:
+
+| Project | Typical `verifyCommands` |
+|---|---|
+| TypeScript | `npx tsc --noEmit` |
+| Vue | `npx vue-tsc --noEmit` |
+| Svelte / SvelteKit | `npx svelte-check` |
+| Astro | `npx astro check` |
+| Python | `python -m pytest` |
+
+The work order also tells the agent how to read the sketches of the languages it touches, for
+example that a Vue component's `on…` fields are events declared with `defineEmits`.
+
 **Know what you allow.** Edits are accepted automatically, so a verify command that runs
 project code (`npm test`, a build script) lets the agent run any code it writes into a test or a
 script: the same trust you give it when you run its tests yourself. Without `verifyCommands`, the

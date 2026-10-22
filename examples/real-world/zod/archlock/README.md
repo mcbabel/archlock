@@ -6,7 +6,7 @@ This folder is the architecture lockfile of this repository, maintained with [ar
 Each `*.arch.py` file sketches one module: which files belong to it, which modules it may depend on,
 and its public API. CI runs `archlock check`, so every architecture change is visible and deliberate.
 
-**45,221 lines of code → 5,789 lines of architecture (7.8×)**
+**45,221 lines of code → 5,824 lines of architecture (7.8×)**
 
 ```mermaid
 graph LR
@@ -35,12 +35,12 @@ graph LR
 
 | Module | Description | Public symbols | Depends on |
 |---|---|---|---|
-| [benchmarks](./benchmarks.arch.py) | – | 38 | zod, zod.core |
-| [docs](./docs.arch.py) | – | 70 | – |
-| [integration](./integration.arch.py) | – | 10 | mini, zod |
+| [benchmarks](./benchmarks.arch.py) | – | 39 | zod, zod.core |
+| [docs](./docs.arch.py) | – | 88 | – |
+| [integration](./integration.arch.py) | – | 16 | mini, zod |
 | [mini](./mini.arch.py) | – | 0 | zod |
 | [resolution](./resolution.arch.py) | – | 1 | mini, zod |
-| [treeshaking](./treeshaking.arch.py) | – | 2 | zod |
+| [treeshaking](./treeshaking.arch.py) | – | 4 | zod |
 | [tsc_perftest](./tsc_perftest.arch.py) | – | 6 | – |
 | [zod](./zod.arch.py) | – | 0 | zod.classic, zod.core, zod.locales, zod.mini |
 | [zod.classic](./zod.classic.arch.py) | Zod 4 classic API: chainable methods like z.string().min(1) (what import "zod" gives you). | 321 | zod.core, zod.locales |

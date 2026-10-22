@@ -224,6 +224,37 @@ class EventV1Processor(EventProcessor[APIGatewayProxyEvent]): ...
 class EventV2Processor(EventProcessor[APIGatewayProxyEventV2]): ...
 class LatticeV2Processor(EventProcessor[LatticeProxyEventV2]): ...
 
+def aws_lambda_handler__handle[
+    'E extends Env = Env',
+    'S extends Schema = {}',
+    'BasePath extends string = "/"',
+](
+    app: Hono[E, S, BasePath],
+    __1: HandleOptions = ...,
+) -> '<([L extends LambdaEvent](event: L, lambdaContext?: … (200 chars, #9ab4947a)>': ...
+
+def bun_serve_static__serveStatic['E extends Env = Env'](
+    options: ServeStaticOptions[E] = ...,
+) -> MiddlewareHandler: ...
+
+def cloudflare_pages_handler__handle[
+    'E extends Env = Env',
+    'S extends Schema = BlankSchema',
+    'BasePath extends string = "/"',
+](
+    app: Hono[E, S, BasePath],
+) -> PagesFunction[E["Bindings"]]: ...
+
+def cloudflare_pages_handler__serveStatic() -> MiddlewareHandler: ...
+
+def cloudflare_workers_serve_static__serveStatic['E extends Env = Env'](
+    options: ServeStaticOptions[E] = ...,
+) -> MiddlewareHandler: ...
+
+def cloudflare_workers_serve_static_module__serveStatic['E extends Env = Env'](
+    options: Omit[ServeStaticOptions[E], "namespace"],
+) -> MiddlewareHandler: ...
+
 def createBody(
     method: string,
     requestBody: CloudFrontRequest["body"],
@@ -232,6 +263,10 @@ def createBody(
 def createBunWebSocket[T]() -> CreateWebSocket[T]: ...
 def createWSContext(ws: BunServerWebSocket[BunWebSocketData]) -> WSContext: ...
 def defaultIsContentTypeBinary(contentType: string) -> boolean: ...
+
+def deno_serve_static__serveStatic['E extends Env = Env'](
+    options: ServeStaticOptions[E] = ...,
+) -> MiddlewareHandler: ...
 
 def fire['E extends Env', 'S extends Schema', 'BasePath extends string'](
     app: Hono[E, S, BasePath],
@@ -247,11 +282,6 @@ async def getContentFromKVAsset(
 
 def getProcessor(event: LambdaEvent) -> EventProcessor[LambdaEvent]: ...
 
-def handle['E extends Env = Env', 'S extends Schema = {}', 'BasePath extends string = "/"'](
-    app: Hono[E, S, BasePath],
-    __1: HandleOptions = ...,
-) -> '<([L extends LambdaEvent](event: L, lambdaContext?: … (200 chars, #9ab4947a)>': ...
-
 def handleMiddleware['E extends Env = {}', 'P extends string = any', 'I extends Input = {}'](
     middleware: 'MiddlewareHandler[E & { Bindings: { eventContext: EventContext } }, P, I]',
 ) -> PagesFunction[E["Bindings"]]: ...
@@ -259,17 +289,38 @@ def handleMiddleware['E extends Env = {}', 'P extends string = any', 'I extends 
 def isContentEncodingBinary(contentEncoding: string | null) -> '<inferred>': ...
 def isContentTypeBinary(contentType: string) -> boolean: ...
 
-def serveStatic['E extends Env = Env'](
-    options: ServeStaticOptions[E] = ...,
-) -> MiddlewareHandler: ...
+def lambda_edge_handler__handle(
+    app: Hono[any],
+) -> '<((event: CloudFrontEdgeEvent, context?: CloudFrontContext, … (129 chars, #c2ce1006)>': ...
+
+def netlify_handler__handle(
+    app: Hono[any, any],
+) -> '((req: Request, context: any) => Response | Promise[Response])': ...
+
+def service_worker_handler__handle['E extends Env', 'S extends Schema', 'BasePath extends string'](
+    app: Hono[E, S, BasePath],
+    opts: HandleOptions = ...,
+) -> Handler: ...
 
 def streamHandle['E extends Env = Env', 'S extends Schema = {}', 'BasePath extends string = "/"'](
     app: Hono[E, S, BasePath],
 ) -> Handler: ...
 
+def vercel_handler__handle(app: Hono[any, any, any]) -> '<inferred>': ...
+
+aws_lambda_conninfo__getConnInfo: GetConnInfo
+bun_conninfo__getConnInfo: GetConnInfo
+bun_ssg__toSSG: ToSSGAdaptorInterface
+bun_websocket__upgradeWebSocket: UpgradeWebSocket[any]
 bunFileSystemModule: FileSystemModule
+cloudflare_pages_conninfo__getConnInfo: GetConnInfo
+cloudflare_workers_conninfo__getConnInfo: GetConnInfo
+cloudflare_workers_websocket__upgradeWebSocket: UpgradeWebSocket[WebSocket, any, Omit[WSEvents[WebSocket], "onOpen"]]
+deno_conninfo__getConnInfo: GetConnInfo
+deno_ssg__toSSG: ToSSGAdaptorInterface
+deno_websocket__upgradeWebSocket: UpgradeWebSocket[WebSocket, Deno.UpgradeWebSocketOptions]
 denoFileSystemModule: FileSystemModule
-getConnInfo: GetConnInfo
-toSSG: ToSSGAdaptorInterface
-upgradeWebSocket: UpgradeWebSocket[any]
+lambda_edge_conninfo__getConnInfo: GetConnInfo
+netlify_conninfo__getConnInfo: GetConnInfo
+vercel_conninfo__getConnInfo: GetConnInfo
 websocket: BunWebSocketHandler[BunWebSocketData]

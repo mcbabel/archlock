@@ -58,6 +58,7 @@ def shortestPaths(g: Graph, roots: 'number[]', maxDepth=...) -> 'Map[number, str
 def snapshotNow(tag: string) -> string: ...
 def table(rows: Array[Record[string, string | number]]) -> void: ...
 
+benchUtil__zod4: 'typeof import("zod4")'
 clone: '<inferred>'
 DATA: 'any[]'
 equals: '<inferred>'
@@ -67,7 +68,7 @@ objB: '<inferred>'
 objC: '<inferred>'
 objD: '<inferred>'
 objE: '<inferred>'
+object_setup__zod4: '<inferred>'
 SINK: any
 sink: any
 zod3: '<inferred>'
-zod4: 'typeof import("zod4")'
