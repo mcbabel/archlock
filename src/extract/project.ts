@@ -71,18 +71,20 @@ const ENTRY_NAMES = [
 ];
 
 /**
- * A file's path inside its module as an identifier prefix:
- * `src/ui/button/button.svelte` in `src/**` → `ui_button_button`.
+ * A file's path inside its module as an identifier prefix: `src/ui/button/button.svelte` in
+ * `src/**` → `ui_button_button`. For a Go package it is the package directory: `ui_button`.
  */
-function filePrefix(spec: ModuleSpec, file: string): string {
+function filePrefix(spec: ModuleSpec, file: string, packageDir: boolean): string {
   let base = "";
   for (const p of spec.paths) {
     if (p.startsWith("!") || !globMatcher([p])(file)) continue;
     const b = globBase(p);
     if (b.length > base.length) base = b;
   }
-  const rel = base === "" ? file : file.slice(base.length + 1);
-  return toSketchName(rel.replace(/\.[^./]+$/, "").replace(/\//g, "_"));
+  const target = packageDir ? posix.dirname(file) : file.replace(/\.[^./]+$/, "");
+  let rel = base === "" ? target : target === base ? "" : target.slice(base.length + 1);
+  if (rel === "" || rel === ".") rel = posix.basename(base) || "root";
+  return toSketchName(rel.replace(/\//g, "_"));
 }
 
 /** Default entry candidates: `index.*` or `__init__.py` in the module root or its `src/`. */
@@ -352,16 +354,20 @@ export function buildProject(
           found.push({ file, name: toSketchName(exportName), def });
         }
       }
-      // A name defined in several files is qualified with each file's path in the module.
-      const filesOf = new Map<string, Set<string>>();
+      // A name defined in several files is qualified with each file's path in the module. In
+      // Go the unit is the package (directory): files of one package that define the same name
+      // are build variants (`open_linux.go`, `open_windows.go`), and the first one wins.
+      const isGo = (file: string) => files.get(file)?.language === "go";
+      const unitOf = (file: string) => (isGo(file) ? `${posix.dirname(file)}/` : file);
+      const unitsOf = new Map<string, Set<string>>();
       for (const { file, name } of found) {
-        const set = filesOf.get(name) ?? new Set();
-        set.add(file);
-        filesOf.set(name, set);
+        const set = unitsOf.get(name) ?? new Set();
+        set.add(unitOf(file));
+        unitsOf.set(name, set);
       }
       for (const { file, name, def } of found) {
-        const shared = (filesOf.get(name) as Set<string>).size > 1;
-        addSymbol(shared ? `${filePrefix(mod.spec, file)}__${name}` : name, def);
+        const shared = (unitsOf.get(name) as Set<string>).size > 1;
+        addSymbol(shared ? `${filePrefix(mod.spec, file, isGo(file))}__${name}` : name, def);
       }
     }
     mod.symbols = [...symbols.values()];

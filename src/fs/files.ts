@@ -32,6 +32,7 @@ export const TS_EXTENSIONS = [
   ...COMPONENT_EXTENSIONS,
 ];
 export const PY_EXTENSIONS = [".py"];
+export const GO_EXTENSIONS = [".go"];
 
 const SKIP_DIRS = new Set([
   "node_modules",

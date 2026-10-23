@@ -17,14 +17,13 @@ export default defineConfig({
   sourcemap: false,
   splitting: true,
   shims: false,
-  // Ship the Python grammar WASM in the package so installing archlock compiles nothing.
+  // Ship the grammar WASM files in the package so installing archlock compiles nothing.
   onSuccess: async () => {
     const require = createRequire(import.meta.url);
     mkdirSync("dist/wasm", { recursive: true });
-    copyFileSync(
-      require.resolve("tree-sitter-python/tree-sitter-python.wasm"),
-      "dist/wasm/tree-sitter-python.wasm",
-    );
+    for (const grammar of ["tree-sitter-python", "tree-sitter-go"]) {
+      copyFileSync(require.resolve(`${grammar}/${grammar}.wasm`), `dist/wasm/${grammar}.wasm`);
+    }
   },
   define: {
     __ARCHLOCK_VERSION__: JSON.stringify(pkg.version),

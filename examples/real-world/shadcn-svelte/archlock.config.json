@@ -17,7 +17,9 @@
     "tests/**",
     "**/test_*.py",
     "**/*_test.py",
-    "**/conftest.py"
+    "**/conftest.py",
+    "**/*_test.go",
+    "**/testdata/**"
   ],
   "rules": {
     "undeclared_dependency": "error",

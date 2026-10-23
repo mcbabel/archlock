@@ -1,0 +1,6 @@
+__module__ = "internal.bytesconv"
+__paths__ = ["internal/bytesconv/*.go"]
+__depends_on__ = []
+
+def BytesToString(b: '[]byte') -> string: ...
+def StringToBytes(s: string) -> '[]byte': ...

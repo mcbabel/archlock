@@ -40,11 +40,11 @@ If your change alters a module's public API or dependencies on purpose, run
 
 ## Adding a language
 
-Most of archlock does not know which language it is looking at. A new language (Go, Rust,
+Most of archlock does not know which language it is looking at. A new language (Rust,
 Java, …) is mainly one extractor and one import resolver. This is the most valuable kind of
 contribution.
 
-1. **Parse without native code.** Use a WASM tree-sitter grammar (like `tree-sitter-python`, see
+1. **Parse without native code.** Use a WASM tree-sitter grammar (like `tree-sitter-go`, see
    `tsup.config.ts`, which copies the `.wasm` into `dist/wasm/`) or a pure-JS parser.
 2. **Extract `FileFacts`** (`src/extract/facts.ts`), syntactically:
    - `imports`: specifier, imported names (`*` for whole-module imports), line, column;
@@ -53,7 +53,8 @@ contribution.
    - `declarations`: `ArchSymbol`s from `src/core/model.ts` (functions with `Signature`s,
      classes/structs with fields and methods, interfaces, type aliases, enums, constants).
      Types are **not translated**: pass the source text through `canonicalType()`.
-   Look at `src/extract/python/file.ts` for a complete example. Formats that embed a language
+   Look at `src/extract/go/file.ts` for a compact example with a tree-sitter grammar, or
+   `src/extract/python/file.ts`. Formats that embed a language
    (Vue, Svelte, Astro) can reuse its extractor: `src/extract/components/` blanks everything
    outside the script blocks and hands the rest to the TypeScript extractor.
 3. **Resolve imports** by implementing `Resolver` (`src/extract/resolution.ts`): a file in the

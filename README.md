@@ -36,7 +36,7 @@ npx archlock diff      # in review: what changed architecturally since main
 No API key, no account, no server. `init` on [Hono](examples/real-world) turns
 **25,971 lines of code into 1,790 lines of architecture (15×)** in 0.6 seconds on a desktop PC.
 
-Languages: TypeScript and JavaScript, Vue, Svelte and Astro components, and Python, also mixed
+Languages: TypeScript and JavaScript, Vue, Svelte and Astro components, Python and Go, also mixed
 ([details](docs/COMMANDS.md#languages)).
 
 ## The two directions
@@ -123,6 +123,7 @@ jobs:
 | Zod (TypeScript), split into its layers by hand | 13 | 45,221 → 5,824 (7.8×) | 0 errors, 6 deep-import warnings |
 | Flask (Python) | 3 | 7,563 → 542 (14×) | 0 errors, 14 warnings, cycle `flask → json → sansio` |
 | shadcn-svelte (Svelte), docs app split by hand | 9 | 133,471 → 3,011 (44×) | 0 errors, 0 warnings |
+| Gin (Go) | 7 | 6,785 → 630 (11×) | 0 errors, 0 warnings |
 
 Sketches, findings and a reproducible script: [examples/real-world](examples/real-world).
 

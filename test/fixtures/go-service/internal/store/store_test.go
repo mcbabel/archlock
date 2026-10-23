@@ -1,0 +1,5 @@
+package store
+
+import "testing"
+
+func TestNew(t *testing.T) {}

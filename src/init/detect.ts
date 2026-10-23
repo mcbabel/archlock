@@ -1,5 +1,6 @@
 /**
- * Heuristic module detection for `archlock init`; the first strategy that finds modules wins:
+ * Heuristic module detection for `archlock init`. Go code becomes one module per package
+ * (directory). For other code the first strategy that finds modules wins:
  * 1. workspace packages of a monorepo,
  * 2. subpackages of a single top-level Python package,
  * 3. subdirectories of `src/` (plus a module for files directly in `src/`),
@@ -7,18 +8,19 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { DEFAULT_EXCLUDE, type Language } from "../config/config.js";
 import {
   defaultEntryCandidates,
   type ModuleSpec,
+  parseGoMod,
   readWorkspacePackages,
 } from "../extract/index.js";
-import { listSourceFiles, PY_EXTENSIONS, TS_EXTENSIONS } from "../fs/files.js";
+import { GO_EXTENSIONS, listSourceFiles, PY_EXTENSIONS, TS_EXTENSIONS } from "../fs/files.js";
 
 export interface Detection {
   languages: Language[];
-  strategy: "workspaces" | "python-package" | "src" | "top-level";
+  strategy: "go-packages" | "workspaces" | "python-package" | "src" | "top-level";
   modules: ModuleSpec[];
   include: string[];
 }
@@ -48,7 +50,7 @@ export function detectLanguages(root: string): Language[] {
   const files = listSourceFiles(root, {
     include: ["**"],
     exclude: DEFAULT_EXCLUDE,
-    extensions: [...TS_EXTENSIONS, ...PY_EXTENSIONS],
+    extensions: [...TS_EXTENSIONS, ...PY_EXTENSIONS, ...GO_EXTENSIONS],
   });
   if (
     has("tsconfig.json") ||
@@ -59,6 +61,7 @@ export function detectLanguages(root: string): Language[] {
   }
   if (has("pyproject.toml") || has("setup.py") || files.some((f) => f.endsWith(".py")))
     langs.push("python");
+  if (has("go.mod") || files.some((f) => f.endsWith(".go"))) langs.push("go");
   return langs.length > 0 ? langs : ["typescript"];
 }
 
@@ -111,8 +114,77 @@ export function detectModules(root: string, languages: Language[]): Detection {
   const extensions = [
     ...(languages.includes("typescript") ? TS_EXTENSIONS : []),
     ...(languages.includes("python") ? PY_EXTENSIONS : []),
+    ...(languages.includes("go") ? GO_EXTENSIONS : []),
   ];
-  const all = listSourceFiles(root, { include: ["**"], exclude: DEFAULT_EXCLUDE, extensions });
+  const files = listSourceFiles(root, { include: ["**"], exclude: DEFAULT_EXCLUDE, extensions });
+  const goFiles = files.filter((f) => f.endsWith(".go"));
+  if (goFiles.length === 0) return detectOther(root, languages, files);
+
+  const go = goPackages(root, goFiles);
+  const rest = files.filter((f) => !f.endsWith(".go"));
+  if (rest.length === 0) {
+    return {
+      languages,
+      strategy: "go-packages",
+      modules: sortSpecs(go.modules),
+      include: go.include,
+    };
+  }
+  // A mixed repository (e.g. a Go service with a web frontend): the rest is detected as usual.
+  const other = detectOther(
+    root,
+    languages.filter((l) => l !== "go"),
+    rest,
+  );
+  const taken = new Set(go.modules.map((m) => m.name));
+  const renamed = other.modules.map((m) =>
+    taken.has(m.name) ? { ...m, name: `${m.name}_web` } : m,
+  );
+  return {
+    languages,
+    strategy: "go-packages",
+    modules: sortSpecs([...go.modules, ...renamed]),
+    include: [...new Set([...go.include, ...other.include])].sort(),
+  };
+}
+
+/**
+ * One module per Go package directory, named after its path (`internal/store` →
+ * `internal.store`); the root package is named after the last element of the module path.
+ */
+function goPackages(root: string, goFiles: string[]): { modules: ModuleSpec[]; include: string[] } {
+  const dirs = [...new Set(goFiles.map((f) => (posix.dirname(f) === "." ? "" : posix.dirname(f))))]
+    .filter((d) => {
+      if (d === "") return true;
+      const parts = d.split("/");
+      return (
+        !NOT_MODULES.has(parts[0] as string) &&
+        !parts.some((p) => /^[._]/.test(p) || p === "testdata")
+      );
+    })
+    .sort();
+  const rootName = (() => {
+    try {
+      const mod = parseGoMod(readFileSync(join(root, "go.mod"), "utf8")).module ?? "";
+      const parts = mod.split("/").filter((p) => !/^v[0-9]+$/.test(p));
+      return moduleName(parts[parts.length - 1] ?? "") || "app";
+    } catch {
+      return "app";
+    }
+  })();
+  const names = dirs.map((d) => (d === "" ? rootName : d.split("/").map(moduleName).join(".")));
+  const modules = dirs.map((d, i) => {
+    let name = names[i] as string;
+    if (d === "" && names.indexOf(name) !== names.lastIndexOf(name)) name = `${name}_root`;
+    return { name, paths: [d === "" ? "*.go" : `${d}/*.go`], entry: null };
+  });
+  const include = [
+    ...new Set(dirs.map((d) => (d === "" ? "*.go" : `${d.split("/")[0]}/**`))),
+  ].sort();
+  return { modules, include };
+}
+
+function detectOther(root: string, languages: Language[], all: string[]): Detection {
   const fileSet = new Set(all);
 
   // 1. Workspace packages.

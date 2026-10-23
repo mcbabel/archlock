@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerates the sketches in this folder from pinned commits of four open-source projects.
+# Regenerates the sketches in this folder from pinned commits of five open-source projects.
 # Only archlock's output is stored here, never the projects' code.
 # After `archlock init`, `customize` applies the edits a user would make by hand (see README.md):
 # Zod's single big module and the shadcn-svelte docs app are split into their parts, and
@@ -18,6 +18,7 @@ REPOS=(
   "zod   https://github.com/colinhacks/zod afdac65e0f80c0ccf9e8909da97c411567908b57"
   "flask https://github.com/pallets/flask d086db856be187255b8ec61ef409357393020f32"
   "shadcn-svelte https://github.com/huntabyte/shadcn-svelte b10f153250b18abfccf49a06e1c4c68945edffa5"
+  "gin https://github.com/gin-gonic/gin 0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646"
 )
 
 # Sets a top-level key in archlock.config.json.
@@ -101,4 +102,4 @@ node -e '
     numbers[name] = { codeLines: s.codeLines, sketchLines: s.sketchLines, modules: s.modules, symbols: s.symbols };
   }
   fs.writeFileSync(out, JSON.stringify(numbers, null, 2) + "\n");
-' "$WORK" "$HERE/numbers.json" hono zod flask shadcn-svelte
+' "$WORK" "$HERE/numbers.json" hono zod flask shadcn-svelte gin

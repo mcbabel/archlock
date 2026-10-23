@@ -22,5 +22,11 @@
     "sketchLines": 3011,
     "modules": 9,
     "symbols": 1939
+  },
+  "gin": {
+    "codeLines": 6785,
+    "sketchLines": 630,
+    "modules": 7,
+    "symbols": 194
   }
 }
