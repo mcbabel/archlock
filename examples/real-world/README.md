@@ -1,7 +1,7 @@
 # archlock on real-world projects
 
-These folders contain the sketches archlock generates for four well-known open-source projects.
-Flask is straight from `archlock init --yes`. Hono, Zod and shadcn-svelte also have the small
+These folders contain the sketches archlock generates for five well-known open-source projects.
+Flask and Gin are straight from `archlock init --yes`. Hono, Zod and shadcn-svelte also have the small
 hand edits a user would make after `init` (see below). Only archlock's output is stored here, never the projects'
 code. `regenerate.sh` reproduces everything, including the hand edits, from the pinned commits.
 
@@ -11,6 +11,7 @@ code. `regenerate.sh` reproduces everything, including the hand edits, from the 
 | [Zod](https://github.com/colinhacks/zod) | TypeScript | [`afdac65`](https://github.com/colinhacks/zod/tree/afdac65e0f80c0ccf9e8909da97c411567908b57) | MIT | 13 | 1,932 | 45,221 → 5,824 lines (**7.8×**) |
 | [Flask](https://github.com/pallets/flask) | Python | [`d086db8`](https://github.com/pallets/flask/tree/d086db856be187255b8ec61ef409357393020f32) | BSD-3-Clause | 3 | 49 | 7,563 → 542 lines (**14×**) |
 | [shadcn-svelte](https://github.com/huntabyte/shadcn-svelte) | Svelte, TypeScript | [`b10f153`](https://github.com/huntabyte/shadcn-svelte/tree/b10f153250b18abfccf49a06e1c4c68945edffa5) | MIT | 9 | 1,939 | 133,471 → 3,011 lines (**44×**) |
+| [Gin](https://github.com/gin-gonic/gin) | Go | [`0f09c3a`](https://github.com/gin-gonic/gin/tree/0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646) | MIT | 7 | 194 | 6,785 → 630 lines (**11×**) |
 
 Lines are non-blank lines of non-test source files and of the generated sketches.
 
@@ -46,7 +47,7 @@ would do in an editor, followed by `archlock accept`. `regenerate.sh` replays th
 
 ## What archlock found
 
-`archlock check` right after `init` reports **no errors** for all four projects (the sketches
+`archlock check` right after `init` reports **no errors** for all five projects (the sketches
 describe the code exactly). It does report warnings that are real architecture observations:
 
 - **Hono** (81 `deep_import` warnings, cycle `client → hono → router → utils → helper → jsx`):
@@ -70,14 +71,19 @@ describe the code exactly). It does report warnings that are real architecture o
   signature, for example [`Button`](shadcn-svelte/archlock/docs.ui.arch.py) with `size` and
   `variant` on top of the HTML attributes of `<button>` and `<a>`.
 
+- **Gin** (no warnings, no cycles): one module per Go package. The root package `gin` depends on
+  `binding`, `render`, `codec.json` and two internal packages, and `ginS` (the singleton API)
+  only on `gin`. `binding/binding.go` and `binding/binding_nomsgpack.go` are build
+  variants (the `nomsgpack` tag) that define the same exported names; the first file counts.
+
 The share of `'<inferred>'` types (public API without annotations) is 4% for Hono, 7% for Zod,
-6% for Flask and 29% for shadcn-svelte, whose Svelte 5 state classes (`.svelte.ts`) rely on
+6% for Flask, 1% for Gin and 29% for shadcn-svelte, whose Svelte 5 state classes (`.svelte.ts`) rely on
 inference (`readonly props = $derived.by(…)`).
 
 ## Measurements
 
 On a desktop PC: `init` 0.6 s (Hono), 0.8 s (Zod), 0.4 s (Flask), 2.2 s (shadcn-svelte, 2,145
-Svelte files); `check` with a warm cache is faster still. (Earlier, in a slower container: 1.2 s, 1.5 s and 0.9 s.) Running `init` twice produces byte-identical files, and every
+Svelte files), 0.4 s (Gin); `check` with a warm cache is faster still. (Earlier, in a slower container: 1.2 s, 1.5 s and 0.9 s.) Running `init` twice produces byte-identical files, and every
 generated sketch satisfies `render(parse(sketch)) === sketch`.
 
 ## Licenses
@@ -88,6 +94,7 @@ their copyright notices are reproduced here:
 - Hono: MIT License, Copyright (c) 2021 - present, Yusuke Wada and Hono contributors.
 - Zod: MIT License, Copyright (c) 2025 Colin McDonnell.
 - Flask: BSD-3-Clause License, Copyright 2010 Pallets.
+- Gin: MIT License, Copyright (c) 2014-present Manuel Martínez-Almeida.
 - shadcn-svelte: MIT License, Copyright (c) 2023 Hunter Johnston, Copyright (c) 2023 CokaKoala,
   Copyright (c) 2023 shadcn.
 

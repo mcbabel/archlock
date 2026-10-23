@@ -120,6 +120,33 @@ types defined elsewhere become bases. Untyped props (`let { text } = $props()`) 
 `'<inferred>'`. Route files are not components: files whose name starts with `+` (SvelteKit)
 and files under a `pages/` directory (Astro, Nuxt) keep only their other exports.
 
+### Mapping from Go
+
+A module is a Go package: `init` makes one per directory with Go files (`internal/store/*.go` →
+`internal.store`). Its public symbols are the exported (capitalized) identifiers; a `main`
+package has none. Types stay Go types, written the way gofmt writes them.
+
+| Go | Sketch |
+|---|---|
+| `func New(path string, opts ...Option) (*Store, error)` | `def New(path: string, *opts: Option) -> '(*Store, error)': ...` |
+| named results `(n int, err error)` / no result | `-> '(int, error)'` / no `->` |
+| unnamed or blank parameters `func(int, string)`, `_ string` | `_1: int, _2: string` (by position) |
+| `func Map[T, U any](…)`, `[K comparable]` | `def Map[T, U](…)`, `['K comparable']` (an `any` constraint is left out) |
+| `type User struct { ID string; *Base; io.Reader }` | `class User('*Base', io.Reader):` with `ID: string` (embedded types are bases) |
+| method `func (u *User) Name() string` in any file of the package | `def Name(self) -> string: ...` inside `class User` |
+| `type Store interface { io.Closer; Get(id ID) (*User, error) }` | `class Store(io.Closer, Protocol):` with `def Get(self, id: ID) -> '(*User, error)'` |
+| type set `interface { ~int \| ~float64 }` | `class Number('~int \| ~float64', Protocol): ...` |
+| defined type `type ID string`, `type Handler func(…)` | `class ID(string):`, `class Handler('func(…)'):` (with their methods) |
+| alias `type Name = string` | `Name: TypeAlias = string` |
+| `const ( Red Color = iota; Green )` | `Red: Color`, `Green: Color` (Go has no enums; the iota idiom stays constants) |
+| untyped constant `const Version = "1.0"` | `Version: 'untyped string'` (`untyped int`, `untyped float`, `untyped bool`, …) |
+| `var Count int`, `var ErrClosed = errors.New(…)`, `var Default = &Config{}` | `Count: int`, `ErrClosed: error`, `Default: '*Config'`; other values are `'<inferred>'` |
+
+Struct tags, unexported fields and methods, and the receiver kind (pointer or value) are not part
+of the sketch. Files with `//go:build ignore` are not part of their package. Build variants of a
+package (`path_linux.go`, `path_windows.go`) define a name once: the first file in path order
+counts.
+
 ### Mapping from Python
 
 Python maps almost 1:1: functions, classes, `Protocol`s, `Enum`s and dataclass fields keep their
@@ -203,7 +230,8 @@ with names that are not identifiers use subscript syntax: `self["content-type"]:
 
 In a module without an entry, a name that several files define is qualified with each file's
 path inside the module, so none of them is hidden: `ui/button/button.svelte` and
-`demo/button.svelte` in `src/**` give `ui_button_button__Button` and `demo_button__Button`.
+`demo/button.svelte` in `src/**` give `ui_button_button__Button` and `demo_button__Button`. For
+Go the package directory counts (`store__New`), and files of the same package do not collide.
 
 ## Parameters
 
