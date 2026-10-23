@@ -138,6 +138,16 @@ function mergeSymbolSoft(
         lost.push({ module, symbol: `${source.name}.${o.name}`, lines: softLines(o.soft) });
       }
     }
+    const oldMethods = source.kind === "enum" ? (source.methods ?? []) : [];
+    for (const m of target.methods ?? []) {
+      const prev = oldMethods.find((o) => o.name === m.name);
+      if (prev) m.soft = cloneSoft(prev.soft);
+    }
+    for (const o of oldMethods) {
+      if (!(target.methods ?? []).some((m) => m.name === o.name) && hasSoft(o.soft)) {
+        lost.push({ module, symbol: `${source.name}.${o.name}`, lines: softLines(o.soft) });
+      }
+    }
     return;
   }
   if (target.kind === "class" || target.kind === "interface") {

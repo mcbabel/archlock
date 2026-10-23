@@ -9,6 +9,7 @@ import {
   type ArchSymbol,
   compareNames,
   type Member,
+  type MethodMember,
   type Signature,
 } from "../core/model.js";
 import { defLine, memberLines, renderParam, symbolLines } from "../sketch/render.js";
@@ -230,9 +231,16 @@ export function changeSummary(b: ArchSymbol, h: ArchSymbol): string | null {
     case "enum": {
       const bm = (b as typeof h).members.map((m) => m.name);
       const hm = h.members.map((m) => m.name);
+      const base = new Map((b as typeof h).members.map((m) => [m.name, m.payload]));
       const parts = [
         ...hm.filter((m) => !bm.includes(m)).map((m) => `+ ${m}`),
         ...bm.filter((m) => !hm.includes(m)).map((m) => `- ${m}`),
+        ...h.members
+          .filter((m) => base.has(m.name) && base.get(m.name) !== m.payload)
+          .map((m) => `~ ${m.name}`),
+        ...(methodsKey((b as typeof h).methods) !== methodsKey(h.methods)
+          ? ["methods changed"]
+          : []),
       ];
       return parts.length > 0 ? parts.join(", ") : "member order changed";
     }
@@ -255,4 +263,9 @@ export function changeSummary(b: ArchSymbol, h: ArchSymbol): string | null {
       return parts.length > 0 ? parts.join(", ") : "decorators changed";
     }
   }
+}
+
+/** Methods without positions and comments, for comparing two code states. */
+function methodsKey(methods: MethodMember[] | undefined): string {
+  return JSON.stringify((methods ?? []).map((m) => [m.name, m.signatures, m.static]));
 }
