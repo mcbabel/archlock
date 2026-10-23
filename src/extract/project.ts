@@ -68,6 +68,9 @@ const ENTRY_NAMES = [
   "index.mjs",
   "index.cjs",
   "__init__.py",
+  "lib.rs",
+  "main.rs",
+  "mod.rs",
 ];
 
 /**
@@ -87,10 +90,15 @@ function filePrefix(spec: ModuleSpec, file: string, packageDir: boolean): string
   return toSketchName(rel.replace(/\//g, "_"));
 }
 
-/** Default entry candidates: `index.*` or `__init__.py` in the module root or its `src/`. */
+/**
+ * Default entry candidates: `index.*`, `__init__.py`, `lib.rs`, `main.rs` or `mod.rs` in the
+ * module root or its `src/`; a module whose first path is a Rust file (`src/parser.rs`) has
+ * that file as its entry.
+ */
 export function defaultEntryCandidates(spec: ModuleSpec): string[] {
   const base = spec.paths.find((p) => !p.startsWith("!"));
   if (base === undefined) return [];
+  if (base.endsWith(".rs") && globBase(base) === base) return [base];
   const root = globBase(base);
   const dirs = [root, root === "" ? "src" : `${root}/src`];
   return dirs.flatMap((d) => ENTRY_NAMES.map((n) => (d === "" ? n : `${d}/${n}`)));

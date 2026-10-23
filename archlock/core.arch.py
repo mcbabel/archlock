@@ -41,12 +41,14 @@ class ConstSymbol(SymbolBase, Protocol):
 
 class EnumMember(Protocol):
     name: string
+    payload: Opt[string]
     soft: Soft
 
 class EnumSymbol(SymbolBase, Protocol):
     bases: 'string[]'
     kind: '"enum"'
     members: 'EnumMember[]'
+    methods: Opt['MethodMember[]']
 
 class FieldMember(Protocol):
     kind: '"field"'

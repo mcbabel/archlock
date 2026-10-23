@@ -22,6 +22,8 @@ const FIXTURES = [
   "astro-site",
   "nuxt-app",
   "go-service",
+  "rust-workspace",
+  "rust-crate",
 ];
 
 /** Warnings a fixture contains on purpose (edge cases); errors are never expected. */

@@ -1,11 +1,12 @@
 /**
- * Language-neutral facts about one source file. Extractors (TypeScript, Python, Go) produce them;
+ * Language-neutral facts about one source file. Extractors (TypeScript, Python, Go, Rust) produce
+ * them;
  * `project.ts` turns them into modules, dependency edges and public APIs.
  */
 
-import type { ArchSymbol, MethodMember } from "../core/model.js";
+import type { ArchSymbol, FieldMember, MethodMember } from "../core/model.js";
 
-export type SourceLanguage = "typescript" | "python" | "go";
+export type SourceLanguage = "typescript" | "python" | "go" | "rust";
 
 export interface ImportFact {
   specifier: string;
@@ -61,6 +62,56 @@ export interface FileFacts {
    * package than its type, so they are attached per package after extraction.
    */
   goMethods?: { receiver: string; method: MethodMember }[];
+  /** Rust only: what the crate pass (`linkRustCrates`) needs to resolve paths and re-exports. */
+  rust?: RustFacts;
+}
+
+/** A `use` leaf (`use a::b::{c as d, e::*}` has two), or an inline path like `crate::x::f()`. */
+export interface RustPath {
+  /** Path segments, e.g. `["crate", "model", "User"]`. */
+  segments: string[];
+  /** `use … as alias`. */
+  alias: string | null;
+  /** `use path::*`. */
+  glob: boolean;
+  /** `pub use` (a re-export); false for private uses and inline paths. */
+  pub: boolean;
+  /** An inline path in code rather than a `use` declaration. */
+  inline: boolean;
+  line: number;
+  column: number;
+}
+
+/** `mod name;`: a module whose code is in another file. */
+export interface RustMod {
+  name: string;
+  pub: boolean;
+  /** `pub(crate)`, `pub(super)` or `pub(in …)`: visible inside the crate. */
+  restricted: boolean;
+  /** `#[path = "…"]`, relative to the declaring file's directory. */
+  path: string | null;
+  line: number;
+  column: number;
+}
+
+/** An `impl` block, attached to its type by the crate pass. */
+export interface RustImpl {
+  /** The implementing type's path, e.g. `["Config"]` or `["crate", "model", "User"]`. */
+  type: string[];
+  /** The implemented trait (canonical), or null for an inherent impl. */
+  trait: string | null;
+  /** Public methods (inherent impls only). */
+  methods: MethodMember[];
+  /** Public associated constants (inherent impls only). */
+  consts: FieldMember[];
+}
+
+export interface RustFacts {
+  mods: RustMod[];
+  paths: RustPath[];
+  impls: RustImpl[];
+  /** `#[macro_export] macro_rules!` names: exported from the crate root. */
+  macros: string[];
 }
 
 /** Local name used for anonymous default exports. */

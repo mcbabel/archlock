@@ -1,0 +1,12 @@
+[package]
+name = "shop-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "shop"
+path = "src/main.rs"
+
+[dependencies]
+shop-core = { path = "../core" }
+clap = "4"

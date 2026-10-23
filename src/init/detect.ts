@@ -1,6 +1,6 @@
 /**
  * Heuristic module detection for `archlock init`. Go code becomes one module per package
- * (directory). For other code the first strategy that finds modules wins:
+ * (directory), Rust code one per crate or top-level module. For other code the first strategy that finds modules wins:
  * 1. workspace packages of a monorepo,
  * 2. subpackages of a single top-level Python package,
  * 3. subdirectories of `src/` (plus a module for files directly in `src/`),
@@ -14,13 +14,20 @@ import {
   defaultEntryCandidates,
   type ModuleSpec,
   parseGoMod,
+  readCargoCrates,
   readWorkspacePackages,
 } from "../extract/index.js";
-import { GO_EXTENSIONS, listSourceFiles, PY_EXTENSIONS, TS_EXTENSIONS } from "../fs/files.js";
+import {
+  GO_EXTENSIONS,
+  listSourceFiles,
+  PY_EXTENSIONS,
+  RS_EXTENSIONS,
+  TS_EXTENSIONS,
+} from "../fs/files.js";
 
 export interface Detection {
   languages: Language[];
-  strategy: "go-packages" | "workspaces" | "python-package" | "src" | "top-level";
+  strategy: "go-packages" | "rust-crates" | "workspaces" | "python-package" | "src" | "top-level";
   modules: ModuleSpec[];
   include: string[];
 }
@@ -50,7 +57,7 @@ export function detectLanguages(root: string): Language[] {
   const files = listSourceFiles(root, {
     include: ["**"],
     exclude: DEFAULT_EXCLUDE,
-    extensions: [...TS_EXTENSIONS, ...PY_EXTENSIONS, ...GO_EXTENSIONS],
+    extensions: [...TS_EXTENSIONS, ...PY_EXTENSIONS, ...GO_EXTENSIONS, ...RS_EXTENSIONS],
   });
   if (
     has("tsconfig.json") ||
@@ -62,6 +69,7 @@ export function detectLanguages(root: string): Language[] {
   if (has("pyproject.toml") || has("setup.py") || files.some((f) => f.endsWith(".py")))
     langs.push("python");
   if (has("go.mod") || files.some((f) => f.endsWith(".go"))) langs.push("go");
+  if (has("Cargo.toml") || files.some((f) => f.endsWith(".rs"))) langs.push("rust");
   return langs.length > 0 ? langs : ["typescript"];
 }
 
@@ -115,37 +123,105 @@ export function detectModules(root: string, languages: Language[]): Detection {
     ...(languages.includes("typescript") ? TS_EXTENSIONS : []),
     ...(languages.includes("python") ? PY_EXTENSIONS : []),
     ...(languages.includes("go") ? GO_EXTENSIONS : []),
+    ...(languages.includes("rust") ? RS_EXTENSIONS : []),
   ];
   const files = listSourceFiles(root, { include: ["**"], exclude: DEFAULT_EXCLUDE, extensions });
-  const goFiles = files.filter((f) => f.endsWith(".go"));
-  if (goFiles.length === 0) return detectOther(root, languages, files);
 
-  const go = goPackages(root, goFiles);
-  const rest = files.filter((f) => !f.endsWith(".go"));
-  if (rest.length === 0) {
-    return {
-      languages,
-      strategy: "go-packages",
-      modules: sortSpecs(go.modules),
-      include: go.include,
-    };
+  // Go and Rust have their own units (packages, crates); everything else is detected as usual.
+  const parts: { strategy: Detection["strategy"]; modules: ModuleSpec[]; include: string[] }[] = [];
+  const goFiles = files.filter((f) => f.endsWith(".go"));
+  if (goFiles.length > 0) parts.push({ strategy: "go-packages", ...goPackages(root, goFiles) });
+  const rsFiles = files.filter((f) => f.endsWith(".rs"));
+  if (rsFiles.length > 0) {
+    const rust = rustCrates(root, rsFiles);
+    if (rust.modules.length > 0) parts.push({ strategy: "rust-crates", ...rust });
   }
-  // A mixed repository (e.g. a Go service with a web frontend): the rest is detected as usual.
-  const other = detectOther(
-    root,
-    languages.filter((l) => l !== "go"),
-    rest,
-  );
-  const taken = new Set(go.modules.map((m) => m.name));
-  const renamed = other.modules.map((m) =>
-    taken.has(m.name) ? { ...m, name: `${m.name}_web` } : m,
-  );
+  const first = parts[0];
+  if (!first) return detectOther(root, languages, files);
+
+  const modules: ModuleSpec[] = [];
+  const taken = new Set<string>();
+  const add = (m: ModuleSpec, suffix: string) => {
+    const name = taken.has(m.name) ? `${m.name}_${suffix}` : m.name;
+    taken.add(name);
+    modules.push({ ...m, name });
+  };
+  for (const p of parts)
+    for (const m of p.modules) add(m, p.strategy === "go-packages" ? "go" : "rs");
+  const include = parts.flatMap((p) => p.include);
+  const rest = files.filter((f) => !f.endsWith(".go") && !f.endsWith(".rs"));
+  if (rest.length > 0) {
+    // A mixed repository (e.g. a Go service with a web frontend).
+    const other = detectOther(
+      root,
+      languages.filter((l) => l !== "go" && l !== "rust"),
+      rest,
+    );
+    for (const m of other.modules) add(m, "web");
+    include.push(...other.include);
+  }
   return {
     languages,
-    strategy: "go-packages",
-    modules: sortSpecs([...go.modules, ...renamed]),
-    include: [...new Set([...go.include, ...other.include])].sort(),
+    strategy: first.strategy,
+    modules: sortSpecs(modules),
+    include: [...new Set(include)].sort(),
   };
+}
+
+/**
+ * Rust: in a workspace one module per crate; a single crate is split into its top-level modules
+ * (`src/parser.rs` with `src/parser/**`) plus one module for the crate root, when it has two or
+ * more of them.
+ */
+function rustCrates(root: string, rsFiles: string[]): { modules: ModuleSpec[]; include: string[] } {
+  const crates = readCargoCrates(root).filter((c) => (c.libRoot ?? c.binRoots[0]) !== undefined);
+  const baseOf = (entry: string) => posix.dirname(entry);
+  if (crates.length > 1) {
+    const names = uniqueNames(crates.map((c) => ({ raw: c.libName, scoped: c.dir })));
+    const modules = crates.map((c, i) => {
+      const entry = (c.libRoot ?? c.binRoots[0]) as string;
+      return { name: names[i] as string, paths: [`${baseOf(entry)}/**`], entry };
+    });
+    return { modules, include: modules.map((m) => m.paths[0] as string).sort() };
+  }
+  const crate = crates[0];
+  if (!crate) return { modules: [], include: [] };
+  const entry = (crate.libRoot ?? crate.binRoots[0]) as string;
+  const base = baseOf(entry);
+  const prefix = base === "." ? "" : `${base}/`;
+  const inBase = rsFiles.filter((f) => f.startsWith(prefix)).map((f) => f.slice(prefix.length));
+  const tops = new Set<string>();
+  for (const f of inBase) {
+    const [head, ...rest] = f.split("/");
+    if (!head || head === "bin") continue;
+    if (rest.length === 0) {
+      if (head.endsWith(".rs") && head !== "lib.rs" && head !== "main.rs")
+        tops.add(head.slice(0, -3));
+    } else if (inBase.includes(`${head}/mod.rs`) || inBase.includes(`${head}.rs`)) tops.add(head);
+  }
+  const crateName = moduleName(crate.libName);
+  if (tops.size < 2) {
+    return {
+      modules: [{ name: crateName, paths: [`${prefix}**`], entry }],
+      include: [`${prefix}**`],
+    };
+  }
+  const modules: ModuleSpec[] = [...tops].sort().map((t) => {
+    const file = inBase.includes(`${t}.rs`) ? `${prefix}${t}.rs` : `${prefix}${t}/mod.rs`;
+    const hasDir = inBase.some((f) => f.startsWith(`${t}/`));
+    const paths = [
+      ...(inBase.includes(`${t}.rs`) ? [`${prefix}${t}.rs`] : []),
+      ...(hasDir ? [`${prefix}${t}/**`] : []),
+    ];
+    const name = moduleName(t) === crateName ? `${crateName}_mod` : moduleName(t);
+    return { name, paths, entry: file };
+  });
+  const rootPaths = [
+    `${prefix}*.rs`,
+    ...(inBase.some((f) => f.startsWith("bin/")) ? [`${prefix}bin/**`] : []),
+  ];
+  modules.push({ name: crateName, paths: rootPaths, entry });
+  return { modules, include: [`${prefix}**`] };
 }
 
 /**

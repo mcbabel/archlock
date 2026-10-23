@@ -20,7 +20,7 @@
     "languages": {
       "description": "Languages to extract.",
       "type": "array",
-      "items": { "enum": ["typescript", "python", "go"] },
+      "items": { "enum": ["typescript", "python", "go", "rust"] },
       "uniqueItems": true
     },
     "include": {
