@@ -1,6 +1,14 @@
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { run } from "../../src/cli/program.js";
 
@@ -62,6 +70,7 @@ export function read(dir: string, file: string): string {
 }
 
 export function write(dir: string, file: string, text: string): void {
+  mkdirSync(dirname(join(dir, file)), { recursive: true });
   writeFileSync(join(dir, file), text);
 }
 

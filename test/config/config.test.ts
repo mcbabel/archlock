@@ -51,7 +51,7 @@ describe("config validation", () => {
       { rules: { sketch_invalid: "off" } },
       "rules.sketch_invalid: is always an error",
     ],
-    ["bad language", { languages: ["go"] }, 'languages: unknown language "go"'],
+    ["bad language", { languages: ["cobol"] }, 'languages: unknown language "cobol"'],
     ["include not array", { include: "src" }, "include: must be an array of strings"],
     ["bad agent", { agent: { default: "gpt" } }, "agent.default: must be one of"],
     ["bad rounds", { agent: { maxRounds: 0 } }, "agent.maxRounds: must be a positive integer"],

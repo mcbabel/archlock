@@ -1,11 +1,11 @@
 /**
- * Language-neutral facts about one source file. Extractors (TypeScript, Python) produce them;
+ * Language-neutral facts about one source file. Extractors (TypeScript, Python, Go) produce them;
  * `project.ts` turns them into modules, dependency edges and public APIs.
  */
 
-import type { ArchSymbol } from "../core/model.js";
+import type { ArchSymbol, MethodMember } from "../core/model.js";
 
-export type SourceLanguage = "typescript" | "python";
+export type SourceLanguage = "typescript" | "python" | "go";
 
 export interface ImportFact {
   specifier: string;
@@ -56,6 +56,11 @@ export interface FileFacts {
   bindings: Map<string, ImportBinding>;
   /** Python only: `__all__` was declared, so only listed names are public. */
   explicitExports?: boolean;
+  /**
+   * Go only: methods by receiver type name. A method may be declared in another file of the
+   * package than its type, so they are attached per package after extraction.
+   */
+  goMethods?: { receiver: string; method: MethodMember }[];
 }
 
 /** Local name used for anonymous default exports. */

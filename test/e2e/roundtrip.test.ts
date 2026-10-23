@@ -21,6 +21,7 @@ const FIXTURES = [
   "svelte-app",
   "astro-site",
   "nuxt-app",
+  "go-service",
 ];
 
 /** Warnings a fixture contains on purpose (edge cases); errors are never expected. */

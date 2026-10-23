@@ -200,7 +200,7 @@ describe("targeted changes produce exactly the expected violation (ts-single)", 
 });
 
 interface ComponentMutation extends Mutation {
-  fixture: "vue-app" | "svelte-app" | "astro-site" | "nuxt-app";
+  fixture: "vue-app" | "svelte-app" | "astro-site" | "nuxt-app" | "go-service";
 }
 
 const componentMutations: ComponentMutation[] = [
@@ -302,6 +302,109 @@ const componentMutations: ComponentMutation[] = [
     expected: [{ rule: "undeclared_dependency", module: "components" }],
   },
 ];
+
+const goMutations: ComponentMutation[] = [
+  {
+    name: "Go: a new exported function is a new public symbol",
+    fixture: "go-service",
+    apply: (d) =>
+      edit(
+        d,
+        "internal/store/store.go",
+        /$/,
+        "\n// Count returns the number of users.\nfunc Count() int { return 0 }\n",
+      ),
+    expected: [{ rule: "public_symbol_added", module: "internal.store", symbol: "Count" }],
+  },
+  {
+    name: "Go: an unexported function is not part of the API",
+    fixture: "go-service",
+    apply: (d) => edit(d, "internal/store/store.go", /$/, "\nfunc count() int { return 0 }\n"),
+    expected: [],
+  },
+  {
+    name: "Go: a changed parameter type changes the signature",
+    fixture: "go-service",
+    apply: (d) =>
+      edit(d, "internal/store/store.go", "func New(path string,", "func New(path []byte,"),
+    expected: [{ rule: "signature_changed", module: "internal.store", symbol: "New" }],
+  },
+  {
+    name: "Go: a method in another file of the package changes its type",
+    fixture: "go-service",
+    apply: (d) =>
+      write(
+        d,
+        "internal/store/close.go",
+        "package store\n\n// Close releases the store.\nfunc (s *Store) Close() error { return nil }\n",
+      ),
+    expected: [{ rule: "signature_changed", module: "internal.store", symbol: "Store" }],
+  },
+  {
+    name: "Go: a new exported struct field changes the type",
+    fixture: "go-service",
+    apply: (d) =>
+      edit(
+        d,
+        "internal/model/user.go",
+        "\tEmail     string\n",
+        "\tEmail     string\n\tPhone     string\n",
+      ),
+    expected: [{ rule: "signature_changed", module: "internal.model", symbol: "User" }],
+  },
+  {
+    name: "Go: importing another package of the module is a new dependency",
+    fixture: "go-service",
+    apply: (d) =>
+      edit(
+        d,
+        "internal/model/constraints.go",
+        "package model\n",
+        'package model\n\nimport _ "example.com/shop/internal/store"\n',
+      ),
+    expected: [{ rule: "undeclared_dependency", module: "internal.model" }],
+  },
+  {
+    name: "Go: standard library and external imports are no module dependencies",
+    fixture: "go-service",
+    apply: (d) =>
+      edit(
+        d,
+        "internal/model/constraints.go",
+        "package model\n",
+        'package model\n\nimport (\n\t_ "os"\n\t_ "github.com/google/uuid"\n)\n',
+      ),
+    expected: [],
+  },
+  {
+    name: "Go: a new package directory is an unassigned file",
+    fixture: "go-service",
+    apply: (d) =>
+      write(
+        d,
+        "internal/cache/cache.go",
+        "package cache\n\n// Size of the cache.\nconst Size = 64\n",
+      ),
+    expected: [{ rule: "unassigned_file", module: null }],
+  },
+];
+
+describe("targeted changes to Go code produce exactly the expected violation", () => {
+  for (const m of goMutations) {
+    it(m.name, async () => {
+      const dir = copyFixture(m.fixture);
+      expect((await archlock(dir, "init", "--yes")).code).toBe(0);
+      m.apply(dir);
+      const result = await checkJson(dir);
+      const got = result.violations.map((v) => ({
+        rule: v.rule,
+        module: v.module,
+        ...(v.symbol ? { symbol: v.symbol } : {}),
+      }));
+      expect(got).toEqual(m.expected);
+    });
+  }
+});
 
 describe("targeted changes to components produce exactly the expected violation", () => {
   for (const m of componentMutations) {

@@ -27,5 +27,6 @@ def relPosix(root: string, abs: string) -> string: ...
 def toPosix(path: string) -> string: ...
 
 ALWAYS_EXCLUDE: '<inferred>'
+GO_EXTENSIONS: '<inferred>'
 PY_EXTENSIONS: '<inferred>'
 TS_EXTENSIONS: '<inferred>'
