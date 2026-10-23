@@ -113,6 +113,7 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
     "- Names a sketch uses but does not define (e.g. `Customer`) are public symbols of the modules in its `__depends_on__`; import them from that module's entry.",
     ...componentNotes(kinds),
     ...goNotes(kinds),
+    ...rustNotes(kinds),
     "",
   );
 
@@ -166,7 +167,7 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
   return `${out.join("\n")}\n`;
 }
 
-type SourceKind = "typescript" | "python" | "go" | "vue" | "svelte" | "astro";
+type SourceKind = "typescript" | "python" | "go" | "rust" | "vue" | "svelte" | "astro";
 
 const KIND_OF: [RegExp, SourceKind][] = [
   [/\.vue$/, "vue"],
@@ -174,6 +175,7 @@ const KIND_OF: [RegExp, SourceKind][] = [
   [/\.astro$/, "astro"],
   [/\.py$/, "python"],
   [/\.go$/, "go"],
+  [/\.rs$/, "rust"],
   [/\.[cm]?[jt]sx?$/, "typescript"],
 ];
 
@@ -226,12 +228,21 @@ function goNotes(kinds: Set<SourceKind>): string[] {
   ];
 }
 
+function rustNotes(kinds: Set<SourceKind>): string[] {
+  if (!kinds.has("rust")) return [];
+  return [
+    "- Rust: the sketch lists what the module's `__entry__` (`lib.rs`, `mod.rs` or the module file) makes public: `pub` items, `pub use` re-exports, and the items of `pub mod` children as `child__item` (`net__TcpListener` is `net::TcpListener`). `pub(crate)` items are not public. Types are Rust types; `Vec[u8]` means `Vec<u8>`.",
+    "- Rust: `class Config:` is a struct (fields are `pub` fields; bases are derived and implemented traits), `class Shape(…, Enum)` an enum whose members carry their data (`Circle = '{ radius: f64 }'`), `class Store(Protocol)` a trait. `def get(self, …)` is a method of an `impl` block (any file of the crate); `@staticmethod` has no `self`. Put a new trait in the bases by writing `impl Trait for Type`.",
+  ];
+}
+
 const VERIFY_EXAMPLES: [SourceKind, string][] = [
   ["vue", "npx vue-tsc --noEmit"],
   ["svelte", "npx svelte-check"],
   ["astro", "npx astro check"],
   ["typescript", "npx tsc --noEmit"],
   ["go", "go build ./..."],
+  ["rust", "cargo check"],
   ["python", "python -m pytest"],
 ];
 

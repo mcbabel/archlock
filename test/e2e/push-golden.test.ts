@@ -77,6 +77,19 @@ describe("push prompt golden files", () => {
     golden("go-service.prompt.md", await prompt(dir));
   });
 
+  it("Rust: a planned enum variant and method", async () => {
+    const dir = copyFixture("rust-crate");
+    await archlock(dir, "init", "--yes");
+    edit(dir, "archlock/lexer.arch.py", "    Newline = ...", "    Newline = ...\n    Tab = '(u8)'");
+    edit(
+      dir,
+      "archlock/lexer.arch.py",
+      'class Lexer["\'a"](Iterator):',
+      'class Lexer["\'a"](Iterator):\n    def position(self) -> usize: ...',
+    );
+    golden("rust-crate.prompt.md", await prompt(dir));
+  });
+
   it("Python: new module planned in a sketch", async () => {
     const dir = copyFixture("py-src");
     await archlock(dir, "init", "--yes");

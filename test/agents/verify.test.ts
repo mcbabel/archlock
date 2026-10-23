@@ -22,6 +22,7 @@ describe("suggested verifyCommands", () => {
       "npx tsc --noEmit",
       "go build ./...",
     ]);
+    expect(suggestedVerifyCommands(["src/lib.rs", "build.rs"])).toEqual(["cargo check"]);
     expect(suggestedVerifyCommands(["README.md"])).toEqual([]);
   });
 });
