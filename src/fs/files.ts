@@ -18,7 +18,19 @@ export const ALWAYS_EXCLUDE = [
   "**/*.arch.py",
 ];
 
-export const TS_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
+/** Single-file components (Vue, Svelte, Astro); their scripts are TypeScript or JavaScript. */
+const COMPONENT_EXTENSIONS = [".vue", ".svelte", ".astro"];
+export const TS_EXTENSIONS = [
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".cts",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ...COMPONENT_EXTENSIONS,
+];
 export const PY_EXTENSIONS = [".py"];
 
 const SKIP_DIRS = new Set([

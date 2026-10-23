@@ -34,6 +34,8 @@ describe("canonicalType", () => {
     ["readonly string[]", "readonly string[]"],
     ["keyof typeof config", "keyof typeof config"],
     ['import("./x").Foo', 'import("./x").Foo'],
+    ["z.infer<typeof schema>", "z.infer[typeof schema]"],
+    ["a?.new<T>", "a?.new[T]"],
     ["[string, number, ...rest: T[]]", "[string, number, ...rest: T[]]"],
     ["(A | B)[]", "(A | B)[]"],
     ["{ a: number }[]", "{ a: number }[]"],

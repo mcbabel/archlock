@@ -33,8 +33,12 @@ function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
   );
 }
 
-export function extractTypeScriptFile(path: string, text: string): FileFacts {
-  const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, scriptKind(path));
+export function extractTypeScriptFile(
+  path: string,
+  text: string,
+  kind: ts.ScriptKind = scriptKind(path),
+): FileFacts {
+  const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, kind);
   return new FileExtractor(path, sf).run(countLines(text));
 }
 

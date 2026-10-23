@@ -6,7 +6,7 @@ This folder is the architecture lockfile of this repository, maintained with [ar
 Each `*.arch.py` file sketches one module: which files belong to it, which modules it may depend on,
 and its public API. CI runs `archlock check`, so every architecture change is visible and deliberate.
 
-**25,971 lines of code → 1,743 lines of architecture (15×)**
+**25,971 lines of code → 1,790 lines of architecture (15×)**
 
 ```mermaid
 graph LR
@@ -53,7 +53,7 @@ graph LR
 
 | Module | Description | Public symbols | Depends on |
 |---|---|---|---|
-| [adapter](./adapter.arch.py) | – | 54 | helper, hono, middleware, utils |
+| [adapter](./adapter.arch.py) | – | 73 | helper, hono, middleware, utils |
 | [aws_lambda](./aws_lambda.arch.py) | – | 10 | – |
 | [bun](./bun.arch.py) | – | 10 | – |
 | [client](./client.arch.py) | – | 11 | hono, utils |
@@ -65,9 +65,9 @@ graph LR
 | [lambda_edge](./lambda_edge.arch.py) | – | 7 | – |
 | [middleware](./middleware.arch.py) | – | 76 | helper, hono, jsx, router, utils |
 | [netlify](./netlify.arch.py) | – | 2 | – |
-| [preset](./preset.arch.py) | – | 1 | hono, router |
+| [preset](./preset.arch.py) | – | 2 | hono, router |
 | [request](./request.arch.py) | – | 1 | – |
-| [router](./router.arch.py) | – | 24 | hono, utils |
+| [router](./router.arch.py) | – | 25 | hono, utils |
 | [service_worker](./service_worker.arch.py) | – | 2 | – |
 | [utils](./utils.arch.py) | – | 150 | helper, hono |
 | [validator](./validator.arch.py) | – | 3 | helper, hono, utils |

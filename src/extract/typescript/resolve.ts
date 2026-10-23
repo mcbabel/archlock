@@ -3,7 +3,7 @@
  * `tsconfig.json` (including `extends`, `paths`, `baseUrl` and solution-style `references`).
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import ts from "typescript";
@@ -83,13 +83,19 @@ export class TypeScriptResolver {
     }
 
     if (!relative) {
+      // Files TypeScript does not resolve itself (e.g. `@/components/Button.vue`).
+      const aliased =
+        (project && aliasTarget(specifier, project)) ??
+        frameworkAlias(specifier, fromAbs, this.root);
+      if (aliased) return { kind: "file", path: relPosix(this.root, aliased) };
       const pkg = packageName(specifier);
       const workspaceModule = this.workspacePackages.get(pkg);
       if (workspaceModule) return { kind: "module", module: workspaceModule };
       if (resolved) return { kind: "external", package: pkg };
-      // An unresolvable `paths` alias is a broken internal import, not an external package.
-      const aliased = project?.pathPatterns.some((p) => matchesPathPattern(p, specifier)) ?? false;
-      return aliased ? { kind: "unresolved" } : { kind: "external", package: pkg };
+      // An unresolvable alias is a broken internal import, not an external package.
+      const alias = project?.pathPatterns.some((p) => matchesPathPattern(p, specifier)) ?? false;
+      if (alias || /^(\$lib|~~|@@|~|@)(\/|$)/.test(specifier)) return { kind: "unresolved" };
+      return { kind: "external", package: pkg };
     }
 
     // Relative import that TypeScript cannot resolve (e.g. `./styles.css`, a missing file):
@@ -187,4 +193,84 @@ function matchesPathPattern(pattern: string, specifier: string): boolean {
   return (
     specifier.startsWith(pattern.slice(0, star)) && specifier.endsWith(pattern.slice(star + 1))
   );
+}
+
+function isFile(path: string): boolean {
+  return existsSync(path) && statSync(path).isFile();
+}
+
+function isDirectory(path: string): boolean {
+  return existsSync(path) && statSync(path).isDirectory();
+}
+
+/** Applies tsconfig `paths` and returns the first target that exists. */
+function aliasTarget(specifier: string, project: ProjectConfig): string | null {
+  const paths = project.options.paths;
+  if (!paths) return null;
+  const base =
+    project.options.baseUrl ??
+    (project.options as { pathsBasePath?: string }).pathsBasePath ??
+    project.dir;
+  for (const [pattern, targets] of Object.entries(paths)) {
+    const star = pattern.indexOf("*");
+    let rest: string | null = null;
+    if (star === -1) {
+      if (pattern === specifier) rest = "";
+    } else if (
+      specifier.length >= pattern.length - 1 &&
+      specifier.startsWith(pattern.slice(0, star)) &&
+      specifier.endsWith(pattern.slice(star + 1))
+    ) {
+      rest = specifier.slice(star, specifier.length - (pattern.length - star - 1));
+    }
+    if (rest === null) continue;
+    for (const target of targets) {
+      const abs = resolve(base, target.replace("*", rest));
+      if (isFile(abs)) return abs;
+    }
+  }
+  return null;
+}
+
+/** The file a module specifier without extension can mean, or null. */
+function firstFile(target: string): string | null {
+  for (const candidate of [
+    target,
+    `${target}.ts`,
+    `${target}.js`,
+    join(target, "index.ts"),
+    join(target, "index.js"),
+  ]) {
+    if (isFile(candidate)) return candidate;
+  }
+  return null;
+}
+
+const SVELTE_CONFIGS = ["svelte.config.js", "svelte.config.ts", "svelte.config.mjs"];
+const NUXT_CONFIGS = ["nuxt.config.ts", "nuxt.config.js", "nuxt.config.mjs"];
+
+/**
+ * Aliases that frameworks declare in generated tsconfig files, which usually do not exist in a
+ * fresh checkout: SvelteKit's `$lib` (`src/lib` next to `svelte.config.*`), and Nuxt's `~`/`@`
+ * (the source directory: `app/` if it exists, else the directory of `nuxt.config.*`) and
+ * `~~`/`@@` (the directory of `nuxt.config.*`).
+ */
+function frameworkAlias(specifier: string, fromAbs: string, root: string): string | null {
+  const lib = /^\$lib(\/.*)?$/.exec(specifier);
+  const nuxt = /^(~~|@@|~|@)(\/.*)?$/.exec(specifier);
+  if (!lib && !nuxt) return null;
+  for (let dir = dirname(fromAbs); dir.startsWith(root); dir = dirname(dir)) {
+    const has = (names: string[]) => names.some((f) => existsSync(join(dir, f)));
+    if (lib && has(SVELTE_CONFIGS)) return firstFile(join(dir, "src", "lib", lib[1] ?? ""));
+    if (nuxt && has(NUXT_CONFIGS)) {
+      const [, prefix, rest] = nuxt;
+      const srcDir =
+        prefix === "~~" || prefix === "@@" || !isDirectory(join(dir, "app"))
+          ? dir
+          : join(dir, "app");
+      return firstFile(join(srcDir, rest ?? ""));
+    }
+    if (dir === root) break;
+  }
+  return null;
 }

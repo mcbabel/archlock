@@ -17,17 +17,6 @@ class LinearRouter[T](Router[T]):
     def add(self, method: string, path: string, handler: T) -> '<inferred>': ...
     def match(self, method: string, path: string) -> Result[T]: ...
 
-class Node:
-    def buildRegExpStr(self) -> string: ...
-    def insert(
-        self,
-        tokens: 'readonly string[]',
-        index: number,
-        paramMap: ParamAssocArray,
-        context: Context,
-        isStatic: boolean,
-    ) -> void: ...
-
 class PatternRouter[T](Router[T]):
     name: string
     def add(self, method: string, path: string, handler: T) -> '<inferred>': ...
@@ -38,6 +27,17 @@ class PreparedRegExpRouter[T](Router[T]):
     name: string
     def __init__(self, matchers: MatcherMap[T], relocateMap: RelocateMap): ...
     def add(self, method: string, path: string, handler: T) -> '<inferred>': ...
+
+class reg_exp_router_node__Node:
+    def buildRegExpStr(self) -> string: ...
+    def insert(
+        self,
+        tokens: 'readonly string[]',
+        index: number,
+        paramMap: ParamAssocArray,
+        context: Context,
+        isStatic: boolean,
+    ) -> void: ...
 
 class RegExpRouter[T](Router[T]):
     match: 'typeof match[Router[T], T]'
@@ -56,6 +56,10 @@ class Trie:
     paths: Record[string, [number, ParamAssocArray]]
     def buildRegExp(self) -> '[RegExp, ReplacementMap, ReplacementMap]': ...
     def insert(self, path: string, isStatic: boolean) -> void: ...
+
+class trie_router_node__Node[T]:
+    def insert(self, method: string, path: string, handler: T) -> void: ...
+    def search(self, method: string, path: string) -> '[[T, Params][]]': ...
 
 class TrieRouter[T](Router[T]):
     name: string

@@ -47,6 +47,18 @@ describe("push prompt golden files", () => {
     golden("ts-single.prompt.md", await prompt(dir));
   });
 
+  it("Vue: a planned prop and event of a component", async () => {
+    const dir = copyFixture("vue-app");
+    await archlock(dir, "init", "--yes");
+    edit(
+      dir,
+      "archlock/components.arch.py",
+      "    onClose: Opt['() => void']",
+      "    onArchive: Opt['(id: string) => void']\n    onClose: Opt['() => void']\n    rounded: Opt[boolean]",
+    );
+    golden("vue-app.prompt.md", await prompt(dir));
+  });
+
   it("Python: new module planned in a sketch", async () => {
     const dir = copyFixture("py-src");
     await archlock(dir, "init", "--yes");

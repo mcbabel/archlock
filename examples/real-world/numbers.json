@@ -1,20 +1,26 @@
 {
   "hono": {
     "codeLines": 25971,
-    "sketchLines": 1743,
+    "sketchLines": 1790,
     "modules": 19,
-    "symbols": 550
+    "symbols": 571
   },
   "zod": {
     "codeLines": 45221,
-    "sketchLines": 5789,
+    "sketchLines": 5824,
     "modules": 13,
-    "symbols": 1905
+    "symbols": 1932
   },
   "flask": {
     "codeLines": 7563,
     "sketchLines": 542,
     "modules": 3,
     "symbols": 49
+  },
+  "shadcn-svelte": {
+    "codeLines": 133471,
+    "sketchLines": 3011,
+    "modules": 9,
+    "symbols": 1939
   }
 }

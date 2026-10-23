@@ -53,7 +53,9 @@ contribution.
    - `declarations`: `ArchSymbol`s from `src/core/model.ts` (functions with `Signature`s,
      classes/structs with fields and methods, interfaces, type aliases, enums, constants).
      Types are **not translated**: pass the source text through `canonicalType()`.
-   Look at `src/extract/python/file.ts` for a complete example.
+   Look at `src/extract/python/file.ts` for a complete example. Formats that embed a language
+   (Vue, Svelte, Astro) can reuse its extractor: `src/extract/components/` blanks everything
+   outside the script blocks and hands the rest to the TypeScript extractor.
 3. **Resolve imports** by implementing `Resolver` (`src/extract/resolution.ts`): a file in the
    repository, a workspace module, an external package, or a built-in.
 4. **Wire it up**: file extensions in `src/fs/files.ts`, the language in `src/config/config.ts`
@@ -63,6 +65,8 @@ contribution.
    init twice is byte-identical), plus mapping tests like `test/extract/python.test.ts` and a
    few targeted mutations like `test/e2e/python.test.ts`.
 6. **Document the mapping** (language construct → sketch) in `docs/FORMAT.md`.
+7. **Tell agents how to read it:** reading notes and a typical `verifyCommands` entry for the
+   language in `src/agents/prompt.ts` (`componentNotes`, `VERIFY_EXAMPLES`).
 
 Open a "New language" issue first if you want feedback on the mapping before writing code.
 

@@ -98,14 +98,20 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
     );
   }
 
+  // The languages of the affected modules; planned modules have no files yet.
+  let kinds = sourceKinds(
+    affected.flatMap((name) => result.project.modules.get(name)?.files ?? []),
+  );
+  if (kinds.size === 0) kinds = sourceKinds(result.project.files.keys());
   out.push("## How to read a sketch", "");
   out.push(
-    "- Sketches use Python syntax as notation, whatever the project's language. Types are written in the module's own language: TypeScript types stay TypeScript (`Promise[T]` means `Promise<T>`; quoted types like `'{ a: number }'` are verbatim).",
+    `- Sketches use Python syntax as notation, whatever the project's language. Types are written in the module's own language${kinds.has("typescript") || COMPONENT_BASES.some(([k]) => kinds.has(k)) ? ": TypeScript types stay TypeScript (`Promise[T]` means `Promise<T>`; quoted types like `'{ a: number }'` are verbatim)" : ""}.`,
     "- `def f(a: T, b: U = ...) -> R` is a function; `b` is optional. `*rest: T` is a rest parameter. Methods take `self`; `@staticmethod` has none.",
     "- `class X(Protocol)` is an interface; `class E(Enum)` an enum; `X: TypeAlias = T` a type alias; `NAME: T` an exported constant.",
     "- Field flags: `Readonly[T]`, `Opt[T]` (optional property), `ClassVar[T]` (static). `'<inferred>'` means the code has no type annotation there.",
     "- Everything listed in a sketch must be public (exported from the module's `__entry__` when one is set); nothing else may be.",
     "- Names a sketch uses but does not define (e.g. `Customer`) are public symbols of the modules in its `__depends_on__`; import them from that module's entry.",
+    ...componentNotes(kinds),
     "",
   );
 
@@ -157,6 +163,72 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
     "- Other shell commands may be refused. If you could not compile the code or run its tests, say so in your final message.",
   );
   return `${out.join("\n")}\n`;
+}
+
+type SourceKind = "typescript" | "python" | "vue" | "svelte" | "astro";
+
+const KIND_OF: [RegExp, SourceKind][] = [
+  [/\.vue$/, "vue"],
+  [/\.svelte$/, "svelte"],
+  [/\.astro$/, "astro"],
+  [/\.py$/, "python"],
+  [/\.[cm]?[jt]sx?$/, "typescript"],
+];
+
+function sourceKinds(files: Iterable<string>): Set<SourceKind> {
+  const kinds = new Set<SourceKind>();
+  for (const f of files) {
+    const kind = KIND_OF.find(([re]) => re.test(f))?.[1];
+    if (kind) kinds.add(kind);
+  }
+  return kinds;
+}
+
+const COMPONENT_BASES: [SourceKind, string][] = [
+  ["vue", "VueComponent"],
+  ["svelte", "SvelteComponent"],
+  ["astro", "AstroComponent"],
+];
+
+function componentNotes(kinds: Set<SourceKind>): string[] {
+  const present = COMPONENT_BASES.filter(([k]) => kinds.has(k));
+  const first = present[0];
+  if (!first) return [];
+  const [ext, base] = first;
+  const others = present.slice(1).map(([, b]) => `\`${b}\``);
+  const out = [
+    `- \`class UserCard(${base})\` is the component in \`UserCard.${ext}\` (or \`user-card.${ext}\`, \`user-card/index.${ext}\`)${others.length > 0 ? `; ${others.join(" and ")} work the same way` : ""}. Its fields are its props and \`on…\` fields its events (\`self["onUpdate:x"]\` is Vue's \`update:x\`); other bases are types its props come from.`,
+  ];
+  if (kinds.has("vue")) {
+    out.push(
+      "- Vue: declare props with `defineProps<{ … }>()` and events with `defineEmits<{ change: [value: T] }>()` in `<script setup>`; a field `onChange: Opt['(value: T) => void']` is the event `change`. Other exports go in a plain `<script>` block.",
+    );
+  }
+  if (kinds.has("svelte")) {
+    out.push(
+      "- Svelte: declare props with `let { … }: Props = $props()` (or `export let` in Svelte 4 components); other exports go in `<script module>`.",
+    );
+  }
+  if (kinds.has("astro")) {
+    out.push("- Astro: declare props as `interface Props { … }` in the frontmatter.");
+  }
+  return out;
+}
+
+const VERIFY_EXAMPLES: [SourceKind, string][] = [
+  ["vue", "npx vue-tsc --noEmit"],
+  ["svelte", "npx svelte-check"],
+  ["astro", "npx astro check"],
+  ["typescript", "npx tsc --noEmit"],
+  ["python", "python -m pytest"],
+];
+
+/** Example `agent.verifyCommands` for the languages of a project. */
+export function suggestedVerifyCommands(files: Iterable<string>): string[] {
+  const kinds = sourceKinds(files);
+  // The component checkers also check the project's TypeScript files.
+  if (COMPONENT_BASES.some(([k]) => kinds.has(k))) kinds.delete("typescript");
+  return VERIFY_EXAMPLES.filter(([k]) => kinds.has(k)).map(([, c]) => c);
 }
 
 function where(v: Violation): string {

@@ -5,6 +5,8 @@ import { abbreviateSymbols } from "../core/abbreviate.js";
 import { type ArchlockCache, hashText } from "../fs/cache.js";
 import { listSourceFiles, PY_EXTENSIONS, TS_EXTENSIONS } from "../fs/files.js";
 import { getPythonParser } from "../sketch/treesitter.js";
+import { extractComponentFile } from "./components/component.js";
+import { frameworkOf } from "./components/sfc.js";
 import { deserializeFacts, type FileFacts, type SerializedFacts, serializeFacts } from "./facts.js";
 import { buildProject, type CodeProject, type ModuleSpec, Ownership } from "./project.js";
 import { extractPythonFile } from "./python/file.js";
@@ -58,7 +60,9 @@ export async function extractProject(
     const extracted =
       python && file.endsWith(".py")
         ? extractPythonFile(python, file, text)
-        : extractTypeScriptFile(file, text);
+        : frameworkOf(file)
+          ? extractComponentFile(file, text)
+          : extractTypeScriptFile(file, text);
     cache?.set("facts", file, hash, serializeFacts(extracted));
     return extracted;
   });

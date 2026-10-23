@@ -10,7 +10,7 @@ import {
   detectAgent,
   onPath,
 } from "../../agents/adapters.js";
-import { buildPushPrompt } from "../../agents/prompt.js";
+import { buildPushPrompt, suggestedVerifyCommands } from "../../agents/prompt.js";
 import { openTodo, runPushLoop } from "../../agents/push.js";
 import {
   AGENT_NAMES,
@@ -240,9 +240,11 @@ export async function runPushCommand(ctx: Context, opts: PushOptions): Promise<n
           ),
     );
     if (chosen.name === "claude" && verifyCommands.length === 0) {
+      const examples = suggestedVerifyCommands(first.project.files.keys());
+      const example = JSON.stringify(examples.length > 0 ? examples : ["npm test"]);
       lines.push(
         c.dim(
-          'Note: claude could only run the archlock check, not your build or tests. To let it, add e.g. "verifyCommands": ["npm test"] to "agent" in archlock.config.json.',
+          `Note: claude could only run the archlock check, not your build or tests. To let it, add e.g. "verifyCommands": ${example} to "agent" in archlock.config.json.`,
         ),
       );
     }

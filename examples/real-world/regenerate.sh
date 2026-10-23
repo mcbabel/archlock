@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Regenerates the sketches in this folder from pinned commits of three open-source projects.
+# Regenerates the sketches in this folder from pinned commits of four open-source projects.
 # Only archlock's output is stored here, never the projects' code.
 # After `archlock init`, `customize` applies the edits a user would make by hand (see README.md):
-# Zod's single big module is split into its layers, and Hono and Zod opt into maxTypeLength.
+# Zod's single big module and the shadcn-svelte docs app are split into their parts, and
+# Hono, Zod and shadcn-svelte opt into maxTypeLength.
 # Usage: pnpm build && examples/real-world/regenerate.sh
 set -euo pipefail
 
@@ -16,6 +17,7 @@ REPOS=(
   "hono  https://github.com/honojs/hono   5ca49b0720755c585c9a9835f0a479ceea36fb52"
   "zod   https://github.com/colinhacks/zod afdac65e0f80c0ccf9e8909da97c411567908b57"
   "flask https://github.com/pallets/flask d086db856be187255b8ec61ef409357393020f32"
+  "shadcn-svelte https://github.com/huntabyte/shadcn-svelte b10f153250b18abfccf49a06e1c4c68945edffa5"
 )
 
 # Sets a top-level key in archlock.config.json.
@@ -29,9 +31,12 @@ set_config() {
 }
 
 # A header-only sketch: the hand edit that plans a module (`archlock accept` fills in the rest).
-plan_module() { # name path-glob entry docstring
-  printf '"""%s"""\n\n__module__ = "%s"\n__paths__ = ["%s"]\n__entry__ = "%s"\n__depends_on__ = []\n' \
-    "$4" "$1" "$2" "$3" >"archlock/$1.arch.py"
+plan_module() { # name path-glob entry docstring (an empty entry means none)
+  {
+    printf '"""%s"""\n\n__module__ = "%s"\n__paths__ = ["%s"]\n' "$4" "$1" "$2"
+    [ -n "$3" ] && printf '__entry__ = "%s"\n' "$3"
+    printf '__depends_on__ = []\n'
+  } >"archlock/$1.arch.py"
 }
 
 customize() { # project name, run inside the clone after `archlock init`
@@ -52,6 +57,16 @@ customize() { # project name, run inside the clone after `archlock init`
         "Error messages in many languages (zod/locales)."
       plan_module zod.v3 "packages/zod/src/v3/**" "packages/zod/src/v3/index.ts" \
         "Zod 3, still shipped for compatibility (zod/v3)."
+      ;;
+    shadcn-svelte)
+      set_config maxTypeLength 120
+      local reg=docs/src/lib/registry
+      plan_module docs.ui "$reg/ui/**" "" \
+        "The components users copy into their apps (npx shadcn-svelte add)."
+      plan_module docs.examples "$reg/examples/**" "$reg/examples/index.ts" \
+        "Usage examples of each component, shown on the docs pages."
+      plan_module docs.blocks "$reg/blocks/**" "" \
+        "Larger compositions such as dashboards, sidebars and login pages."
       ;;
     *) return 0 ;;
   esac
@@ -86,4 +101,4 @@ node -e '
     numbers[name] = { codeLines: s.codeLines, sketchLines: s.sketchLines, modules: s.modules, symbols: s.symbols };
   }
   fs.writeFileSync(out, JSON.stringify(numbers, null, 2) + "\n");
-' "$WORK" "$HERE/numbers.json" hono zod flask
+' "$WORK" "$HERE/numbers.json" hono zod flask shadcn-svelte

@@ -248,7 +248,11 @@ export function canonicalType(input: string): string {
   for (let i = 0; i < tokens.length; i++) {
     const cur = tokens[i] as Token;
     const prev = tokens[i - 1];
-    if (prev && needsSpace(prev, cur, conditional[i - 1] === true, conditional[i] === true)) {
+    const member = tokens[i - 2]?.kind === "punct" && /^\??\.$/.test(tokens[i - 2]?.text ?? "");
+    if (
+      prev &&
+      needsSpace(prev, cur, conditional[i - 1] === true, conditional[i] === true, member)
+    ) {
       out += " ";
     }
     out += cur.text;
@@ -256,7 +260,14 @@ export function canonicalType(input: string): string {
   return out;
 }
 
-function needsSpace(prev: Token, cur: Token, prevCond: boolean, curCond: boolean): boolean {
+/** `prevIsMember`: `prev` follows `.` or `?.`, so a keyword-like word is a property name. */
+function needsSpace(
+  prev: Token,
+  cur: Token,
+  prevCond: boolean,
+  curCond: boolean,
+  prevIsMember: boolean,
+): boolean {
   const p = prev.kind === "punct" ? prev.text : null;
   const c = cur.kind === "punct" ? cur.text : null;
 
@@ -275,7 +286,7 @@ function needsSpace(prev: Token, cur: Token, prevCond: boolean, curCond: boolean
   if (c !== null && BINARY.has(c)) return true;
   if (p !== null && BINARY.has(p)) return true;
   if (c === "(" || c === "[") {
-    if (prev.kind === "word") return SPACED_KEYWORDS.has(prev.text);
+    if (prev.kind === "word") return SPACED_KEYWORDS.has(prev.text) && !prevIsMember;
     if (prev.kind === "string" || prev.kind === "number") return false;
     return p !== ")" && p !== "]" && p !== "}";
   }

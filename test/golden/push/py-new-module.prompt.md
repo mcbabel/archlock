@@ -17,7 +17,7 @@ Module `notifications` has no code yet. Create it under `src/shopkit/notificatio
 
 ## How to read a sketch
 
-- Sketches use Python syntax as notation, whatever the project's language. Types are written in the module's own language: TypeScript types stay TypeScript (`Promise[T]` means `Promise<T>`; quoted types like `'{ a: number }'` are verbatim).
+- Sketches use Python syntax as notation, whatever the project's language. Types are written in the module's own language.
 - `def f(a: T, b: U = ...) -> R` is a function; `b` is optional. `*rest: T` is a rest parameter. Methods take `self`; `@staticmethod` has none.
 - `class X(Protocol)` is an interface; `class E(Enum)` an enum; `X: TypeAlias = T` a type alias; `NAME: T` an exported constant.
 - Field flags: `Readonly[T]`, `Opt[T]` (optional property), `ClassVar[T]` (static). `'<inferred>'` means the code has no type annotation there.

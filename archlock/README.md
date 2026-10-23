@@ -6,7 +6,7 @@ This folder is the architecture lockfile of this repository, maintained with [ar
 Each `*.arch.py` file sketches one module: which files belong to it, which modules it may depend on,
 and its public API. CI runs `archlock check`, so every architecture change is visible and deliberate.
 
-**8,870 lines of code → 738 lines of architecture (12×)**
+**9,663 lines of code → 739 lines of architecture (13×)**
 
 ```mermaid
 graph LR
@@ -58,7 +58,7 @@ graph LR
 
 | Module | Description | Public symbols | Depends on |
 |---|---|---|---|
-| [agents](./agents.arch.py) | Coding-agent integration for `archlock push`: the work-order prompt, agent adapters and the round loop. | 26 | config, core, engine, fs, report, sketch |
+| [agents](./agents.arch.py) | Coding-agent integration for `archlock push`: the work-order prompt, agent adapters and the round loop. | 27 | config, core, engine, fs, report, sketch |
 | [archlock](./archlock.arch.py) | Package entry points: the `archlock` binary (src/cli.ts) and the library API (src/index.ts). | 0 | cli, core, sketch |
 | [cli](./cli.arch.py) | Command-line layer: argument parsing, prompts and printing. Thin; all logic lives below. | 31 | agents, config, core, engine, extract, fs, git, init, mcp, report, sketch |
 | [config](./config.arch.py) | archlock.config.json: defaults, validation with key-specific messages, serialization. | 16 | core |
