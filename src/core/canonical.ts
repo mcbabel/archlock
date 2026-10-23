@@ -132,6 +132,18 @@ function tokenize(input: string): Token[] {
       i = j;
       continue;
     }
+    // Go channel directions: `chan<- T`, `<-chan T`.
+    if (ch === "<" && input[i + 1] === "-") {
+      const last = tokens[tokens.length - 1];
+      if (
+        (last?.kind === "word" && last.text === "chan") ||
+        /^\s*chan\b/.test(input.slice(i + 2))
+      ) {
+        push({ kind: "punct", text: "<-" });
+        i += 2;
+        continue;
+      }
+    }
     const multi = MULTI_PUNCT.find((p) => input.startsWith(p, i));
     if (multi) {
       push({ kind: "punct", text: multi });
@@ -165,6 +177,10 @@ function endsMember(t: Token): boolean {
 function startsMember(t: Token): boolean {
   if (t.kind === "word") return !NOT_MEMBER_START.has(t.text);
   return t.kind === "string" || (t.kind === "punct" && ["[", "(", "-", "+"].includes(t.text));
+}
+
+function isSeparator(p: string | null): boolean {
+  return p === "," || p === ";" || p === ":" || p === "|" || p === "&";
 }
 
 function isWordLike(t: Token | undefined): boolean {
@@ -248,10 +264,9 @@ export function canonicalType(input: string): string {
   for (let i = 0; i < tokens.length; i++) {
     const cur = tokens[i] as Token;
     const prev = tokens[i - 1];
-    const member = tokens[i - 2]?.kind === "punct" && /^\??\.$/.test(tokens[i - 2]?.text ?? "");
     if (
       prev &&
-      needsSpace(prev, cur, conditional[i - 1] === true, conditional[i] === true, member)
+      needsSpace(prev, cur, conditional[i - 1] === true, conditional[i] === true, tokens[i - 2])
     ) {
       out += " ";
     }
@@ -260,18 +275,31 @@ export function canonicalType(input: string): string {
   return out;
 }
 
-/** `prevIsMember`: `prev` follows `.` or `?.`, so a keyword-like word is a property name. */
+/** `before` is the token before `prev`. */
 function needsSpace(
   prev: Token,
   cur: Token,
   prevCond: boolean,
   curCond: boolean,
-  prevIsMember: boolean,
+  before: Token | undefined,
 ): boolean {
   const p = prev.kind === "punct" ? prev.text : null;
   const c = cur.kind === "punct" ? cur.text : null;
+  // After `.` or `?.`, a keyword-like word is a property name (`z.infer[...]`).
+  const prevIsMember = before?.kind === "punct" && (before.text === "." || before.text === "?.");
 
   if (prevCond || curCond) return true;
+  // Go spellings, none of which occur in TypeScript types: `chan<- T`, `<-chan T`, `*T`, `~T`,
+  // `[]T`, `map[K]V`, `func() (T, error)`, `struct{ … }`, `interface{ … }`.
+  if (c === "<-") return prev.kind === "word" ? prev.text !== "chan" : isSeparator(p);
+  if (p === "<-") return before?.kind === "word" && before.text === "chan";
+  if (p === "*" || p === "~") return false;
+  if (c === "*" || c === "~") return isWordLike(prev) || isSeparator(p);
+  if (p === "]" && cur.kind === "word" && !SPACED_KEYWORDS.has(cur.text)) return false;
+  if (p === ")" && c === "(") return true;
+  if (c === "{" && prev.kind === "word" && (prev.text === "struct" || prev.text === "interface")) {
+    return false;
+  }
   if (p === "{") return c !== "}";
   if (c === "}") return true;
   if (p !== null && OPENERS.has(p)) return false;
@@ -341,16 +369,20 @@ export function isPythonIdentifier(name: string): boolean {
   return /^[\p{L}_][\p{L}\p{N}_]*$/u.test(name) && !PYTHON_KEYWORDS.has(name);
 }
 
+const CONSTANT_KEYWORDS = new Set(["None", "True", "False"]);
+
 /**
  * Maps a code identifier to a sketch identifier: Python keywords get a trailing `_` (PEP 8),
  * invalid characters such as `$` become `_`.
  */
 export function toSketchName(name: string): string {
+  // `None`, `True` and `False` are valid in types (`-> None`) but not as names.
+  if (CONSTANT_KEYWORDS.has(name)) return `${name}_`;
   if (isPythonIdentifier(name)) return name;
   if (PYTHON_KEYWORDS.has(name)) return `${name}_`;
   let out = name.replace(/[^\p{L}\p{N}_]/gu, "_");
   if (out === "" || /^\p{N}/u.test(out)) out = `_${out}`;
-  return PYTHON_KEYWORDS.has(out) ? `${out}_` : out;
+  return PYTHON_KEYWORDS.has(out) || CONSTANT_KEYWORDS.has(out) ? `${out}_` : out;
 }
 
 /**
