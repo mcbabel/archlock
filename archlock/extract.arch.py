@@ -45,6 +45,14 @@ class ModuleSpec(Protocol):
     name: string
     paths: 'string[]'
 
+class RustCrate(Protocol):
+    binRoots: 'string[]'
+    deps: Map[string, RustDependency]
+    dir: string
+    libName: string
+    libRoot: string | null
+    packageName: string
+
 class WorkspacePackage(Protocol):
     dir: string
     name: string
@@ -66,5 +74,6 @@ def parseGoMod(
     text: string,
 ) -> '{ module: string | null; requires: string[]; replaces: { from: string; to: string }[] }': ...
 
+def readCargoCrates(root: string) -> 'RustCrate[]': ...
 def readWorkspacePackages(root: string) -> 'WorkspacePackage[]': ...
 def sourceExtensions(config: ArchlockConfig) -> 'string[]': ...

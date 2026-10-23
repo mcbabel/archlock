@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Language, Parser } from "web-tree-sitter";
 
 /** Grammars shipped in `dist/wasm/`, named after their npm packages. */
-type Grammar = "tree-sitter-python" | "tree-sitter-go";
+type Grammar = "tree-sitter-python" | "tree-sitter-go" | "tree-sitter-rust";
 
 const parsers = new Map<Grammar, Promise<Parser>>();
 
@@ -56,4 +56,9 @@ export function getPythonParser(): Promise<Parser> {
 /** Returns a shared tree-sitter parser for Go sources. */
 export function getGoParser(): Promise<Parser> {
   return getParser("tree-sitter-go");
+}
+
+/** Returns a shared tree-sitter parser for Rust sources. */
+export function getRustParser(): Promise<Parser> {
+  return getParser("tree-sitter-rust");
 }

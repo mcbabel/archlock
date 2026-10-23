@@ -110,6 +110,11 @@ export type Member = FieldMember | MethodMember;
 
 export interface EnumMember {
   name: string;
+  /**
+   * Canonical type of the data a variant carries (Rust: `(u8, u8)`, `{ x: i32 }`); absent for
+   * members without data. Rendered as `Name = '(u8, u8)'`.
+   */
+  payload?: string;
   soft: Soft;
 }
 
@@ -125,6 +130,8 @@ export interface EnumSymbol extends SymbolBase {
   bases: string[];
   /** Kept in source order: enum member order can be meaningful. */
   members: EnumMember[];
+  /** Methods (Rust: from `impl` blocks), rendered after the members; absent when none. */
+  methods?: MethodMember[];
 }
 
 export interface TypeAliasSymbol extends SymbolBase {

@@ -69,7 +69,9 @@ Re-exports of symbols defined in another module may follow the header as
 Symbols are rendered in groups, each sorted alphabetically (case-insensitive): **enums, type
 aliases, protocols (interfaces), classes, functions, constants.** Members of a class are
 rendered fields first (alphabetical), then methods (`__init__` first, then alphabetical).
-Enum members keep their source order because it can be meaningful.
+Enum members keep their source order because it can be meaningful. A member that carries data
+(Rust) has its type as a string, `Circle = '{ radius: f64 }'`; methods of an enum follow its
+members.
 
 ### Mapping from TypeScript
 
@@ -146,6 +148,39 @@ Struct tags, unexported fields and methods, and the receiver kind (pointer or va
 of the sketch. Files with `//go:build ignore` are not part of their package. Build variants of a
 package (`path_linux.go`, `path_windows.go`) define a name once: the first file in path order
 counts.
+
+### Mapping from Rust
+
+A module is a crate in a Cargo workspace; a single crate is split into its top-level modules
+(`src/parser.rs` with `src/parser/**`) plus one module for the crate root. A module's API is what
+its `__entry__` (`lib.rs`, `mod.rs` or the module file) makes public: `pub` items, `pub use`
+re-exports and, for `pub mod` children inside the same module, their items as `child__item`
+(`net::TcpListener` → `net__TcpListener`). `pub(crate)` and `pub(super)` items, private modules
+and binaries have no public API. Types stay Rust types, with `<…>` written `[…]` as for
+TypeScript.
+
+| Rust | Sketch |
+|---|---|
+| `pub fn split<'a>(s: &'a str, sep: char) -> Vec<&'a str>` | `def split["'a"](s: "&'a str", sep: char) -> "Vec[&'a str]": ...` |
+| generics with bounds and `where` clauses | `def apply['F: Fn(T) -> T', T: Clone](…)` (bounds merged into the parameter) |
+| `pub async fn`, no return type | `async def`, no `->` |
+| patterns as parameters `(a, b): (u8, u8)` | `_1: '(u8, u8)'` (by position) |
+| `#[derive(Debug, Clone)] pub struct User { pub id: u64, name: String }` | `class User(Clone, Debug):` with `id: u64` (`pub` fields only) |
+| tuple and unit structs `pub struct Id(pub u64);`, `pub struct Marker;` | `class Id:` with `_0: u64`, `class Marker: ...` |
+| `impl User { pub fn name(&self) -> &str; pub fn new() -> Self }` in any file of the crate | `def name(self) -> '&str'` and `@staticmethod def new() -> Self` inside `class User` |
+| `impl Display for User` | `Display` becomes a base of `User` (bases are sorted) |
+| `pub enum Shape { Circle { r: f64 }, Rect(f64, f64), Point }` | `class Shape(Enum):` with `Circle = '{ r: f64 }'`, `Rect = '(f64, f64)'`, `Point = ...` |
+| `pub trait Store: Send { type Item: Clone; const MAX: usize; fn get(&self) -> Self::Item; }` | `class Store(Send, Protocol):` with `Item: 'type: Clone'`, `MAX: ClassVar[usize]`, `def get(self) -> 'Self::Item'` |
+| `pub type Result<T> = std::result::Result<T, Error>;` | `Result: TypeAlias[T] = 'std::result::Result[T, Error]'` |
+| `pub const VERSION: &str`, `pub static COUNT: AtomicUsize` | `VERSION: '&str'`, `COUNT: AtomicUsize` |
+| `pub mod prelude { pub fn hello() }` (inline) | `def prelude__hello(): ...` |
+| `#[macro_export] macro_rules! price` | `price: 'macro_rules!'` (at the crate root) |
+| `pub use self::model::User as Account;`, `pub extern crate grep_cli as cli;` | `Account` (the struct), `from .grep_cli import cli` |
+
+Items inside item-level macros such as `cfg_rt! { … }` and the branches of `cfg_if!` are read as
+items when they parse as Rust. `#[cfg(test)]` and `#[test]` code is skipped. The receiver kind
+(`&self`, `&mut self`, `self`), `unsafe` and `const fn`, enum discriminants and trait methods of
+`impl Trait for Type` blocks are not part of the sketch.
 
 ### Mapping from Python
 

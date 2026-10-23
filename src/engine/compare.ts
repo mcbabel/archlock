@@ -334,8 +334,23 @@ function diffEnum(sketch: EnumSymbol, code: EnumSymbol): string[] {
     out.push(...sketchVsCode(symbolLines(sketch), symbolLines(code)));
   const s = sketch.members.map((m) => m.name);
   const c = code.members.map((m) => m.name);
-  for (const m of c) if (!s.includes(m)) out.push(`+ ${m} (in code, not in sketch)`);
-  for (const m of s) if (!c.includes(m)) out.push(`- ${m} (in sketch, not in code)`);
+  const label = (m: EnumSymbol["members"][number]) =>
+    m.payload === undefined ? m.name : `${m.name} = ${m.payload}`;
+  for (const m of code.members) {
+    if (!s.includes(m.name)) out.push(`+ ${label(m)} (in code, not in sketch)`);
+  }
+  for (const m of sketch.members) {
+    if (!c.includes(m.name)) out.push(`- ${label(m)} (in sketch, not in code)`);
+  }
+  for (const m of sketch.members) {
+    const other = code.members.find((x) => x.name === m.name);
+    if (other && other.payload !== m.payload) {
+      out.push(
+        `~ ${m.name}: sketch ${m.payload ?? "(no data)"} · code ${other.payload ?? "(no data)"}`,
+      );
+    }
+  }
+  out.push(...diffMembers(sketch.methods ?? [], code.methods ?? []));
   if (out.length === 0 && s.join() !== c.join())
     out.push(`member order: sketch (${s.join(", ")}) · code (${c.join(", ")})`);
   return out;
@@ -357,8 +372,14 @@ function diffClass(sketch: ClassLikeSymbol, code: ClassLikeSymbol): string[] {
       );
     }
   }
-  const s = new Map(sketch.members.map((m) => [memberKey(m), m]));
-  const c = new Map(code.members.map((m) => [memberKey(m), m]));
+  out.push(...diffMembers(sketch.members, code.members));
+  return out;
+}
+
+function diffMembers(sketch: Member[], code: Member[]): string[] {
+  const out: string[] = [];
+  const s = new Map(sketch.map((m) => [memberKey(m), m]));
+  const c = new Map(code.map((m) => [memberKey(m), m]));
   const keys = [...new Set([...s.keys(), ...c.keys()])].sort(compareNames);
   for (const key of keys) {
     const sm = s.get(key);

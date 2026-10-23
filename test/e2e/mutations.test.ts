@@ -200,7 +200,14 @@ describe("targeted changes produce exactly the expected violation (ts-single)", 
 });
 
 interface ComponentMutation extends Mutation {
-  fixture: "vue-app" | "svelte-app" | "astro-site" | "nuxt-app" | "go-service";
+  fixture:
+    | "vue-app"
+    | "svelte-app"
+    | "astro-site"
+    | "nuxt-app"
+    | "go-service"
+    | "rust-workspace"
+    | "rust-crate";
 }
 
 const componentMutations: ComponentMutation[] = [
@@ -388,6 +395,123 @@ const goMutations: ComponentMutation[] = [
     expected: [{ rule: "unassigned_file", module: null }],
   },
 ];
+
+const rustMutations: ComponentMutation[] = [
+  {
+    name: "Rust: a new pub function at the crate root is a new public symbol",
+    fixture: "rust-workspace",
+    apply: (d) => edit(d, "crates/core/src/lib.rs", /$/, "\npub fn reset() {}\n"),
+    expected: [{ rule: "public_symbol_added", module: "shop_core", symbol: "reset" }],
+  },
+  {
+    name: "Rust: pub(crate) and private items are not part of the API",
+    fixture: "rust-workspace",
+    apply: (d) =>
+      edit(d, "crates/core/src/lib.rs", /$/, "\npub(crate) fn reset() {}\nfn other() {}\n"),
+    expected: [],
+  },
+  {
+    name: "Rust: a pub item in a private module is not part of the API",
+    fixture: "rust-workspace",
+    apply: (d) => edit(d, "crates/core/src/util_impl.rs", /$/, "\npub fn more() {}\n"),
+    expected: [],
+  },
+  {
+    name: "Rust: a new pub field of a re-exported struct changes it",
+    fixture: "rust-workspace",
+    apply: (d) =>
+      edit(
+        d,
+        "crates/core/src/model/user.rs",
+        "    pub id: u64,\n",
+        "    pub id: u64,\n    pub admin: bool,\n",
+      ),
+    expected: [{ rule: "signature_changed", module: "shop_core", symbol: "model__User" }],
+  },
+  {
+    name: "Rust: changed variant data changes the enum",
+    fixture: "rust-workspace",
+    apply: (d) => edit(d, "crates/core/src/error.rs", "NotFound(u64),", "NotFound(u64, String),"),
+    expected: [{ rule: "signature_changed", module: "shop_core", symbol: "Error" }],
+  },
+  {
+    name: "Rust: a method in an impl block of another file changes its type",
+    fixture: "rust-workspace",
+    apply: (d) => {
+      edit(d, "crates/core/src/store/mod.rs", "pub mod memory;\n", "pub mod memory;\nmod extra;\n");
+      write(
+        d,
+        "crates/core/src/store/extra.rs",
+        "use super::memory::MemoryStore;\n\nimpl MemoryStore {\n    pub fn len(&self) -> usize { 0 }\n}\n",
+      );
+    },
+    expected: [
+      { rule: "signature_changed", module: "shop_core", symbol: "store__memory__MemoryStore" },
+    ],
+  },
+  {
+    name: "Rust: a new trait implementation changes the type's bases",
+    fixture: "rust-workspace",
+    apply: (d) =>
+      edit(
+        d,
+        "crates/core/src/model/user.rs",
+        /$/,
+        "\nimpl std::fmt::Display for Role {\n    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { Ok(()) }\n}\n",
+      ),
+    expected: [{ rule: "signature_changed", module: "shop_core", symbol: "model__Role" }],
+  },
+  {
+    name: "Rust: a use of another top-level module is a new dependency",
+    fixture: "rust-crate",
+    apply: (d) => edit(d, "src/parser/ast.rs", /^/, "use crate::util::width;\n"),
+    expected: [{ rule: "undeclared_dependency", module: "parser" }],
+  },
+  {
+    name: "Rust: an inline path without use is a dependency too",
+    fixture: "rust-crate",
+    apply: (d) =>
+      edit(
+        d,
+        "src/util.rs",
+        /$/,
+        "\npub fn doc() -> crate::parser::ast::Document { Default::default() }\n",
+      ),
+    expected: [
+      { rule: "public_symbol_added", module: "util", symbol: "doc" },
+      { rule: "undeclared_dependency", module: "util" },
+    ],
+  },
+  {
+    name: "Rust: standard library and crates.io imports are no module dependencies",
+    fixture: "rust-crate",
+    apply: (d) =>
+      edit(
+        d,
+        "src/util.rs",
+        /^/,
+        "use std::collections::HashMap;\nuse unicode_width::UnicodeWidthStr;\n",
+      ),
+    expected: [],
+  },
+];
+
+describe("targeted changes to Rust code produce exactly the expected violation", () => {
+  for (const m of rustMutations) {
+    it(m.name, async () => {
+      const dir = copyFixture(m.fixture);
+      expect((await archlock(dir, "init", "--yes")).code).toBe(0);
+      m.apply(dir);
+      const result = await checkJson(dir);
+      const got = result.violations.map((v) => ({
+        rule: v.rule,
+        module: v.module,
+        ...(v.symbol ? { symbol: v.symbol } : {}),
+      }));
+      expect(got).toEqual(m.expected);
+    });
+  }
+});
 
 describe("targeted changes to Go code produce exactly the expected violation", () => {
   for (const m of goMutations) {

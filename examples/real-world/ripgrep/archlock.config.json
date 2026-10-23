@@ -1,0 +1,46 @@
+{
+  "$schema": "https://unpkg.com/archlock/schema.json",
+  "version": 1,
+  "sketchDir": "archlock",
+  "languages": ["rust"],
+  "include": [
+    "crates/cli/src/**",
+    "crates/core/**",
+    "crates/globset/src/**",
+    "crates/grep/src/**",
+    "crates/ignore/src/**",
+    "crates/matcher/src/**",
+    "crates/pcre2/src/**",
+    "crates/printer/src/**",
+    "crates/regex/src/**",
+    "crates/searcher/src/**"
+  ],
+  "exclude": [
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/__tests__/**",
+    "tests/**",
+    "**/test_*.py",
+    "**/*_test.py",
+    "**/conftest.py",
+    "**/*_test.go",
+    "**/testdata/**"
+  ],
+  "rules": {
+    "undeclared_dependency": "error",
+    "unused_dependency": "info",
+    "undeclared_external": "error",
+    "public_symbol_added": "error",
+    "planned_not_implemented": "error",
+    "signature_changed": "error",
+    "kind_changed": "error",
+    "deep_import": "warn",
+    "unassigned_file": "warn",
+    "dependency_cycle": "off"
+  },
+  "agent": {
+    "default": "claude",
+    "command": null,
+    "maxRounds": 3
+  }
+}

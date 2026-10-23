@@ -3,8 +3,14 @@ import { join } from "node:path";
 import type { ArchlockConfig } from "../config/config.js";
 import { abbreviateSymbols } from "../core/abbreviate.js";
 import { type ArchlockCache, hashText } from "../fs/cache.js";
-import { GO_EXTENSIONS, listSourceFiles, PY_EXTENSIONS, TS_EXTENSIONS } from "../fs/files.js";
-import { getGoParser, getPythonParser } from "../sketch/treesitter.js";
+import {
+  GO_EXTENSIONS,
+  listSourceFiles,
+  PY_EXTENSIONS,
+  RS_EXTENSIONS,
+  TS_EXTENSIONS,
+} from "../fs/files.js";
+import { getGoParser, getPythonParser, getRustParser } from "../sketch/treesitter.js";
 import { extractComponentFile } from "./components/component.js";
 import { frameworkOf } from "./components/sfc.js";
 import { deserializeFacts, type FileFacts, type SerializedFacts, serializeFacts } from "./facts.js";
@@ -13,6 +19,9 @@ import { GoResolver, readGoMods } from "./go/resolve.js";
 import { buildProject, type CodeProject, type ModuleSpec, Ownership } from "./project.js";
 import { extractPythonFile } from "./python/file.js";
 import { PythonResolver, pythonRoots } from "./python/resolve.js";
+import { readCargoCrates } from "./rust/cargo.js";
+import { linkRustCrates, rustResolver } from "./rust/crate.js";
+import { extractRustFile } from "./rust/file.js";
 import { extractTypeScriptFile } from "./typescript/file.js";
 import { TypeScriptResolver } from "./typescript/resolve.js";
 import { readWorkspacePackages } from "./workspaces.js";
@@ -27,6 +36,7 @@ export {
   type ModuleSpec,
   Ownership,
 } from "./project.js";
+export { type RustCrate, readCargoCrates } from "./rust/cargo.js";
 export { readWorkspacePackages, type WorkspacePackage } from "./workspaces.js";
 
 export interface ExtractResult {
@@ -40,6 +50,7 @@ export function sourceExtensions(config: ArchlockConfig): string[] {
   if (config.languages.includes("typescript")) ext.push(...TS_EXTENSIONS);
   if (config.languages.includes("python")) ext.push(...PY_EXTENSIONS);
   if (config.languages.includes("go")) ext.push(...GO_EXTENSIONS);
+  if (config.languages.includes("rust")) ext.push(...RS_EXTENSIONS);
   return ext;
 }
 
@@ -57,6 +68,7 @@ export async function extractProject(
   });
   const python = files.some((f) => f.endsWith(".py")) ? await getPythonParser() : null;
   const go = files.some((f) => f.endsWith(".go")) ? await getGoParser() : null;
+  const rust = files.some((f) => f.endsWith(".rs")) ? await getRustParser() : null;
   const facts: FileFacts[] = files.map((file) => {
     const text = readFileSync(join(root, file), "utf8");
     const hash = hashText(text);
@@ -67,15 +79,18 @@ export async function extractProject(
         ? extractPythonFile(python, file, text)
         : go && file.endsWith(".go")
           ? extractGoFile(go, file, text)
-          : frameworkOf(file)
-            ? extractComponentFile(file, text)
-            : extractTypeScriptFile(file, text);
+          : rust && file.endsWith(".rs")
+            ? extractRustFile(rust, file, text)
+            : frameworkOf(file)
+              ? extractComponentFile(file, text)
+              : extractTypeScriptFile(file, text);
     cache?.set("facts", file, hash, serializeFacts(extracted));
     return extracted;
   });
   attachGoMethods(facts);
-
   const ownership = new Ownership(specs);
+  if (rust) linkRustCrates(root, facts, readCargoCrates(root), (f) => ownership.owner(f));
+
   const workspaceModules = new Map<string, string>();
   for (const pkg of readWorkspacePackages(root)) {
     const owner = ownership.owner(pkg.dir === "" ? "package.json" : `${pkg.dir}/package.json`);
@@ -91,7 +106,9 @@ export async function extractProject(
       ? pyResolver
       : f.language === "go" && goResolver
         ? goResolver
-        : tsResolver,
+        : f.language === "rust"
+          ? rustResolver
+          : tsResolver,
   );
   for (const mod of project.modules.values()) {
     mod.symbols = abbreviateSymbols(mod.symbols, config.maxTypeLength);

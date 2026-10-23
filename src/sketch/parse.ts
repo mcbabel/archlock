@@ -480,7 +480,6 @@ class SketchParser {
           return;
         }
         if (node.type === "function_definition" || node.type === "decorated_definition") {
-          if (isEnum) throw new SketchSyntaxError("enums cannot have methods in a sketch", node);
           const method = this.parseMethod(node);
           const prev = members.find((m) => m.kind === "method" && m.name === method.name);
           if (prev && prev.kind === "method") {
@@ -504,10 +503,15 @@ class SketchParser {
           if (assign?.type === "assignment") {
             if (isEnum) {
               const left = assign.childForFieldName("left");
+              const right = assign.childForFieldName("right");
               if (left?.type !== "identifier" || assign.childForFieldName("type")) {
-                throw new SketchSyntaxError("enum members look like `Name = ...`", node);
+                throw new SketchSyntaxError(
+                  "enum members look like `Name = ...` or, with data, `Name = '(u8, u8)'`",
+                  node,
+                );
               }
               const m: EnumMember = { name: left.text, soft: emptySoft() };
+              if (right?.type === "string") m.payload = typeOf(right);
               if (enumMembers.some((e) => e.name === m.name)) {
                 throw new SketchSyntaxError(`duplicate enum member \`${m.name}\``, node);
               }
@@ -568,6 +572,8 @@ class SketchParser {
         soft,
         loc: this.loc(def),
       };
+      const methods = members.filter((m): m is MethodMember => m.kind === "method");
+      if (methods.length > 0) sym.methods = methods;
       return sym;
     }
     const sym: ClassLikeSymbol = {

@@ -22,6 +22,10 @@ interface Token {
   text: string;
   /** A line break preceded this token in the source. */
   nl?: boolean;
+  /** A prefix operator that binds to the next token: Rust `&T`, `?Sized`. */
+  prefix?: boolean;
+  /** A `+` between two types (Rust trait bounds `Error + Send`). */
+  binary?: boolean;
 }
 
 const MULTI_PUNCT = ["...", "=>", "?.", "::", "**", "->"];
@@ -42,6 +46,11 @@ const SPACED_KEYWORDS = new Set([
   "abstract",
   "out",
   "const",
+  // Rust: `&mut [T]`, `dyn (Fn() + Send)`, `impl [Trait]`.
+  "mut",
+  "dyn",
+  "impl",
+  "where",
 ]);
 
 function isWordStart(ch: string): boolean {
@@ -82,6 +91,18 @@ function tokenize(input: string): Token[] {
       const end = input.indexOf("*/", i + 2);
       i = end === -1 ? n : end + 2;
       continue;
+    }
+    // Rust lifetimes (`&'a str`, `'static`): a quote that no TypeScript string literal could close.
+    if (ch === "'" && /[A-Za-z_]/.test(input[i + 1] ?? "")) {
+      let k = i + 1;
+      while (k < n && isWordPart(input[k] as string)) k++;
+      let j = i + 1;
+      while (j < n && input[j] !== "'") j += input[j] === "\\" ? 2 : 1;
+      if (input[k] !== "'" && (j >= n || isWordPart(input[j + 1] ?? ""))) {
+        push({ kind: "word", text: input.slice(i, k) });
+        i = k;
+        continue;
+      }
     }
     if (ch === '"' || ch === "'") {
       let j = i + 1;
@@ -143,6 +164,25 @@ function tokenize(input: string): Token[] {
         i += 2;
         continue;
       }
+    }
+    // Rust references `&T`, `&mut T` and the `?Sized` bound: prefixes that bind to the next token.
+    const last = tokens[tokens.length - 1];
+    const afterType =
+      last !== undefined && (isWordLike(last) || (last.kind === "punct" && CLOSERS.has(last.text)));
+    if (ch === "&" && !afterType && /[^\s|]/.test(input[i + 1] ?? " ")) {
+      push({ kind: "punct", text: "&", prefix: true });
+      i++;
+      continue;
+    }
+    if (
+      ch === "?" &&
+      /[A-Za-z_]/.test(input[i + 1] ?? "") &&
+      last?.kind === "punct" &&
+      [":", "+", ",", "(", "["].includes(last.text)
+    ) {
+      push({ kind: "punct", text: "?", prefix: true });
+      i++;
+      continue;
     }
     const multi = MULTI_PUNCT.find((p) => input.startsWith(p, i));
     if (multi) {
@@ -216,6 +256,7 @@ export function canonicalType(input: string): string {
     }
     if (
       t.kind === "punct" &&
+      !t.prefix &&
       (t.text === "|" || t.text === "&") &&
       (prev === undefined ||
         (prev.kind === "punct" &&
@@ -240,7 +281,17 @@ export function canonicalType(input: string): string {
   const pending: number[][] = [[]];
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i] as Token;
-    if (t.kind !== "punct") continue;
+    if (t.kind !== "punct" || t.prefix) continue;
+    if (t.text === "+") {
+      const before = tokens[i - 1];
+      const after = tokens[i + 1];
+      t.binary =
+        before !== undefined &&
+        (isWordLike(before) || before.text === ")" || before.text === "]") &&
+        after !== undefined &&
+        (isWordLike(after) || after.text === "(" || after.prefix === true);
+      continue;
+    }
     if (OPENERS.has(t.text) || t.text === "{") pending.push([]);
     else if (CLOSERS.has(t.text)) {
       if (pending.length > 1) pending.pop();
@@ -289,6 +340,11 @@ function needsSpace(
   const prevIsMember = before?.kind === "punct" && (before.text === "." || before.text === "?.");
 
   if (prevCond || curCond) return true;
+  // Rust spellings: `Error + Send`, `std::io::Error`, `&'a mut T`, `T: ?Sized`.
+  if (prev.binary || cur.binary) return true;
+  if (p === "::" || c === "::") return false;
+  if (prev.prefix) return false;
+  if (cur.prefix) return isWordLike(prev) || isSeparator(p) || (p !== null && BINARY.has(p));
   // Go spellings, none of which occur in TypeScript types: `chan<- T`, `<-chan T`, `*T`, `~T`,
   // `[]T`, `map[K]V`, `func() (T, error)`, `struct{ … }`, `interface{ … }`.
   if (c === "<-") return prev.kind === "word" ? prev.text !== "chan" : isSeparator(p);
@@ -297,6 +353,8 @@ function needsSpace(
   if (c === "*" || c === "~") return isWordLike(prev) || isSeparator(p);
   if (p === "]" && cur.kind === "word" && !SPACED_KEYWORDS.has(cur.text)) return false;
   if (p === ")" && c === "(") return true;
+  // Rust macros: `macro_rules!`.
+  if (c === "!" && prev.kind === "word") return false;
   if (c === "{" && prev.kind === "word" && (prev.text === "struct" || prev.text === "interface")) {
     return false;
   }

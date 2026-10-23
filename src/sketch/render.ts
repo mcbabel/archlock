@@ -183,13 +183,26 @@ function classBody(
   return out;
 }
 
+/** `Enum` goes last unless another enum base (`IntEnum`) is there: `class Color(str, Enum)`. */
+const ENUM_BASES = new Set(["Enum", "IntEnum", "StrEnum", "Flag", "IntFlag"]);
+
+function enumBases(sym: EnumSymbol): string {
+  const bases = sym.bases.map((b) => renderType(b));
+  if (!sym.bases.some((b) => ENUM_BASES.has(b))) bases.push("Enum");
+  return bases.join(", ");
+}
+
 function renderEnum(sym: EnumSymbol, indent: string): string[] {
   const inner = indent + INDENT;
-  const bases = sym.bases.length > 0 ? sym.bases.join(", ") : "Enum";
+  const bases = enumBases(sym);
   const lines: string[] = [];
   for (const m of sym.members) {
     lines.push(...indented(m.soft.leading, inner));
-    lines.push(withTrailing(`${inner}${m.name} = ...`, m.soft.trailing));
+    const value = m.payload === undefined ? "..." : pythonString(m.payload);
+    lines.push(withTrailing(`${inner}${m.name} = ${value}`, m.soft.trailing));
+  }
+  for (const m of sortMembers(sym.methods ?? [])) {
+    if (m.kind === "method") lines.push(...renderMethod(m, inner));
   }
   return classBody(indent, `${indent}class ${sym.name}(${bases}):`, sym.soft, lines, []);
 }
@@ -364,7 +377,7 @@ export function symbolLines(sym: ArchSymbol): string[] {
       return [`${sym.name}: TypeAlias${tp} = ${renderType(sym.type)}`];
     }
     case "enum":
-      return [`class ${sym.name}(${sym.bases.length > 0 ? sym.bases.join(", ") : "Enum"})`];
+      return [`class ${sym.name}(${enumBases(sym)})`];
     case "class":
     case "interface": {
       const bases = sym.bases.map((b) => renderType(b));
