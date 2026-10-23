@@ -59,6 +59,24 @@ describe("push prompt golden files", () => {
     golden("vue-app.prompt.md", await prompt(dir));
   });
 
+  it("Go: a planned method and a changed function", async () => {
+    const dir = copyFixture("go-service");
+    await archlock(dir, "init", "--yes");
+    edit(
+      dir,
+      "archlock/internal.store.arch.py",
+      "    def Events(self) -> '<-chan model.ID': ...",
+      "    def Close(self) -> error: ...\n    def Events(self) -> '<-chan model.ID': ...",
+    );
+    edit(
+      dir,
+      "archlock/internal.store.arch.py",
+      "def DefaultPath() -> string: ...",
+      "def DefaultPath(name: string) -> string: ...",
+    );
+    golden("go-service.prompt.md", await prompt(dir));
+  });
+
   it("Python: new module planned in a sketch", async () => {
     const dir = copyFixture("py-src");
     await archlock(dir, "init", "--yes");

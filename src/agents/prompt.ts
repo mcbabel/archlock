@@ -112,6 +112,7 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
     "- Everything listed in a sketch must be public (exported from the module's `__entry__` when one is set); nothing else may be.",
     "- Names a sketch uses but does not define (e.g. `Customer`) are public symbols of the modules in its `__depends_on__`; import them from that module's entry.",
     ...componentNotes(kinds),
+    ...goNotes(kinds),
     "",
   );
 
@@ -165,13 +166,14 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
   return `${out.join("\n")}\n`;
 }
 
-type SourceKind = "typescript" | "python" | "vue" | "svelte" | "astro";
+type SourceKind = "typescript" | "python" | "go" | "vue" | "svelte" | "astro";
 
 const KIND_OF: [RegExp, SourceKind][] = [
   [/\.vue$/, "vue"],
   [/\.svelte$/, "svelte"],
   [/\.astro$/, "astro"],
   [/\.py$/, "python"],
+  [/\.go$/, "go"],
   [/\.[cm]?[jt]sx?$/, "typescript"],
 ];
 
@@ -215,11 +217,21 @@ function componentNotes(kinds: Set<SourceKind>): string[] {
   return out;
 }
 
+function goNotes(kinds: Set<SourceKind>): string[] {
+  if (!kinds.has("go")) return [];
+  return [
+    "- Go: a module is a package (its `__paths__` directory). Everything in its sketch is an exported (capitalized) identifier; types are Go types (`'*Store'`, `'[]byte'`, `'(int, error)'` for several results, `'untyped string'` for an untyped constant).",
+    "- Go: `class Store:` is a struct (fields are exported fields, bases are embedded types), `class Reader(Protocol)` an interface, `class ID(string)` a defined type with that underlying type. `def Get(self, …)` is a method; declare it with a receiver, `func (s *Store) Get(…)`, in any file of the package. `*opts: Option` is `opts ...Option`; `_1`, `_2` are unnamed parameters.",
+    "- Go: a name defined in several files of one package (build variants such as `path_linux.go` and `path_windows.go`) is compared in the first of them only; change every variant.",
+  ];
+}
+
 const VERIFY_EXAMPLES: [SourceKind, string][] = [
   ["vue", "npx vue-tsc --noEmit"],
   ["svelte", "npx svelte-check"],
   ["astro", "npx astro check"],
   ["typescript", "npx tsc --noEmit"],
+  ["go", "go build ./..."],
   ["python", "python -m pytest"],
 ];
 

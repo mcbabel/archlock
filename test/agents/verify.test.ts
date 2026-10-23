@@ -18,6 +18,10 @@ describe("suggested verifyCommands", () => {
       "npx tsc --noEmit",
       "python -m pytest",
     ]);
+    expect(suggestedVerifyCommands(["cmd/shop/main.go", "web/app.ts"])).toEqual([
+      "npx tsc --noEmit",
+      "go build ./...",
+    ]);
     expect(suggestedVerifyCommands(["README.md"])).toEqual([]);
   });
 });
