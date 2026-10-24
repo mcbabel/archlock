@@ -115,6 +115,7 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
     ...goNotes(kinds),
     ...rustNotes(kinds),
     ...javaNotes(kinds),
+    ...csharpNotes(kinds),
     "",
   );
 
@@ -168,7 +169,16 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
   return `${out.join("\n")}\n`;
 }
 
-type SourceKind = "typescript" | "python" | "go" | "rust" | "java" | "vue" | "svelte" | "astro";
+type SourceKind =
+  | "typescript"
+  | "python"
+  | "go"
+  | "rust"
+  | "java"
+  | "csharp"
+  | "vue"
+  | "svelte"
+  | "astro";
 
 const KIND_OF: [RegExp, SourceKind][] = [
   [/\.vue$/, "vue"],
@@ -178,6 +188,7 @@ const KIND_OF: [RegExp, SourceKind][] = [
   [/\.go$/, "go"],
   [/\.rs$/, "rust"],
   [/\.java$/, "java"],
+  [/\.cs$/, "csharp"],
   [/\.[cm]?[jt]sx?$/, "typescript"],
 ];
 
@@ -246,6 +257,14 @@ function javaNotes(kinds: Set<SourceKind>): string[] {
   ];
 }
 
+function csharpNotes(kinds: Set<SourceKind>): string[] {
+  if (!kinds.has("csharp")) return [];
+  return [
+    "- C#: a module is a project (or a folder of one); its sketch lists the `public` types and their `public` members (in interfaces every member without an access modifier). Nested types are `Outer__Inner`; partial classes are one type. Types are C# types; `List[string]` means `List<string>`, `'string?'` is nullable.",
+    "- C#: properties and fields are `Name: string` (`Readonly[…]` without a public setter, `ClassVar[…]` for `static` and `const`), events are `'event EventHandler'`, `def __getitem__` is an indexer, `def __init__` a constructor, `*items: 'T[]'` is `params T[] items`, and `'ref int'`, `'out int'`, `'this T'` keep their modifier. `@record`, `@struct`, `@static`, `@abstract`, `@sealed` and `@readonly` are the type's kind and modifiers.",
+  ];
+}
+
 const VERIFY_EXAMPLES: [SourceKind, string][] = [
   ["vue", "npx vue-tsc --noEmit"],
   ["svelte", "npx svelte-check"],
@@ -254,6 +273,7 @@ const VERIFY_EXAMPLES: [SourceKind, string][] = [
   ["go", "go build ./..."],
   ["rust", "cargo check"],
   ["java", "mvn -q compile"],
+  ["csharp", "dotnet build"],
   ["python", "python -m pytest"],
 ];
 
