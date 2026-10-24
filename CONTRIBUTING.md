@@ -40,8 +40,8 @@ If your change alters a module's public API or dependencies on purpose, run
 
 ## Adding a language
 
-Most of archlock does not know which language it is looking at. A new language (Java,
-C#, …) is mainly one extractor and one import resolver. This is the most valuable kind of
+Most of archlock does not know which language it is looking at. A new language (C#,
+Kotlin, …) is mainly one extractor and one import resolver. This is the most valuable kind of
 contribution.
 
 1. **Parse without native code.** Use a WASM tree-sitter grammar (like `tree-sitter-go`, see

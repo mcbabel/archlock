@@ -36,7 +36,8 @@ npx archlock diff      # in review: what changed architecturally since main
 No API key, no account, no server. `init` on [Hono](examples/real-world) turns
 **25,971 lines of code into 1,790 lines of architecture (15×)** in 0.6 seconds on a desktop PC.
 
-Languages: TypeScript and JavaScript, Vue, Svelte and Astro components, Python, Go and Rust, also mixed
+Languages: TypeScript and JavaScript, Vue, Svelte and Astro components, Python, Go, Rust and Java,
+also mixed
 ([details](docs/COMMANDS.md#languages)).
 
 ## The two directions
@@ -125,6 +126,7 @@ jobs:
 | shadcn-svelte (Svelte), docs app split by hand | 9 | 133,471 → 3,011 (44×) | 0 errors, 0 warnings |
 | Gin (Go) | 7 | 6,785 → 630 (11×) | 0 errors, 0 warnings |
 | ripgrep (Rust) | 10 | 43,627 → 886 (49×) | 0 errors, 0 warnings |
+| Spring PetClinic (Java) | 5 | 1,644 → 92 (18×) | 0 errors, 0 warnings |
 
 Sketches, findings and a reproducible script: [examples/real-world](examples/real-world).
 

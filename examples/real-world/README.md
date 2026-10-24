@@ -1,7 +1,7 @@
 # archlock on real-world projects
 
-These folders contain the sketches archlock generates for six well-known open-source projects.
-Flask, Gin and ripgrep are straight from `archlock init --yes`. Hono, Zod and shadcn-svelte also have the small
+These folders contain the sketches archlock generates for seven well-known open-source projects.
+Flask, Gin, ripgrep and Spring PetClinic are straight from `archlock init --yes`. Hono, Zod and shadcn-svelte also have the small
 hand edits a user would make after `init` (see below). Only archlock's output is stored here, never the projects'
 code. `regenerate.sh` reproduces everything, including the hand edits, from the pinned commits.
 
@@ -13,6 +13,7 @@ code. `regenerate.sh` reproduces everything, including the hand edits, from the 
 | [shadcn-svelte](https://github.com/huntabyte/shadcn-svelte) | Svelte, TypeScript | [`b10f153`](https://github.com/huntabyte/shadcn-svelte/tree/b10f153250b18abfccf49a06e1c4c68945edffa5) | MIT | 9 | 1,939 | 133,471 → 3,011 lines (**44×**) |
 | [Gin](https://github.com/gin-gonic/gin) | Go | [`0f09c3a`](https://github.com/gin-gonic/gin/tree/0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646) | MIT | 7 | 194 | 6,785 → 630 lines (**11×**) |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | Rust | [`6892bc2`](https://github.com/BurntSushi/ripgrep/tree/6892bc2b7efe5909cbbeec8f757ed2c4c76b1d30) | Unlicense or MIT | 10 | 115 | 43,627 → 886 lines (**49×**) |
+| [Spring PetClinic](https://github.com/spring-projects/spring-petclinic) | Java | [`500158f`](https://github.com/spring-projects/spring-petclinic/tree/500158f732419217507c7656904b8e6aa1bcc0d6) | Apache-2.0 | 5 | 18 | 1,644 → 92 lines (**18×**) |
 
 Lines are non-blank lines of non-test source files and of the generated sketches.
 
@@ -48,7 +49,7 @@ would do in an editor, followed by `archlock accept`. `regenerate.sh` replays th
 
 ## What archlock found
 
-`archlock check` right after `init` reports **no errors** for all six projects (the sketches
+`archlock check` right after `init` reports **no errors** for all seven projects (the sketches
 describe the code exactly). It does report warnings that are real architecture observations:
 
 - **Hono** (81 `deep_import` warnings, cycle `client → hono → router → utils → helper → jsx`):
@@ -80,16 +81,20 @@ describe the code exactly). It does report warnings that are real architecture o
   `grep_matcher` is the base the searcher, printer and both regex engines build on; `grep` is a
   facade that only re-exports the other crates (`pub extern crate grep_cli as cli;` and so on);
   the `ripgrep` binary depends on `grep` and `ignore`, and has no public API.
+- **Spring PetClinic** (no warnings, no cycles): one module per feature package below
+  `org.springframework.samples.petclinic` (`owner`, `vet`, `system`, `model`) plus the root
+  package. `owner` and `vet` build on the shared `model` entities. The web controllers are
+  package-private, so the public API is the entities, repositories, formatters and validators.
 
 The share of `'<inferred>'` types (public API without annotations) is 4% for Hono, 7% for Zod,
-6% for Flask, 1% for Gin, 0% for ripgrep (Rust has no unannotated public API) and 29% for
-shadcn-svelte, whose Svelte 5 state classes (`.svelte.ts`) rely on
+6% for Flask, 1% for Gin, 0% for ripgrep and Spring PetClinic (Rust and Java have no
+unannotated public API) and 29% for shadcn-svelte, whose Svelte 5 state classes (`.svelte.ts`) rely on
 inference (`readonly props = $derived.by(…)`).
 
 ## Measurements
 
 On a desktop PC: `init` 0.6 s (Hono), 0.8 s (Zod), 0.4 s (Flask), 2.2 s (shadcn-svelte, 2,145
-Svelte files), 0.4 s (Gin), 0.7 s (ripgrep); `check` with a warm cache is faster still. (Earlier, in a slower container: 1.2 s, 1.5 s and 0.9 s.) Running `init` twice produces byte-identical files, and every
+Svelte files), 0.4 s (Gin), 0.7 s (ripgrep), 0.4 s (Spring PetClinic); `check` with a warm cache is faster still. (Earlier, in a slower container: 1.2 s, 1.5 s and 0.9 s.) Running `init` twice produces byte-identical files, and every
 generated sketch satisfies `render(parse(sketch)) === sketch`.
 
 ## Licenses
@@ -100,6 +105,7 @@ their copyright notices are reproduced here:
 - Hono: MIT License, Copyright (c) 2021 - present, Yusuke Wada and Hono contributors.
 - Zod: MIT License, Copyright (c) 2025 Colin McDonnell.
 - Flask: BSD-3-Clause License, Copyright 2010 Pallets.
+- Spring PetClinic: Apache License 2.0, Copyright 2012-2025 the original author or authors.
 - ripgrep: dual-licensed under the Unlicense and the MIT License, Copyright (c) 2015 Andrew Gallant.
 - Gin: MIT License, Copyright (c) 2014-present Manuel Martínez-Almeida.
 - shadcn-svelte: MIT License, Copyright (c) 2023 Hunter Johnston, Copyright (c) 2023 CokaKoala,

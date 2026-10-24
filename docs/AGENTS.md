@@ -76,6 +76,9 @@ Pick the type checker of your stack; `push` suggests one after a run without `ve
 | Svelte / SvelteKit | `npx svelte-check` |
 | Astro | `npx astro check` |
 | Python | `python -m pytest` |
+| Go | `go build ./...` (or `go vet ./...`) |
+| Rust | `cargo check` |
+| Java | `mvn -q compile` (Gradle: `./gradlew compileJava`) |
 
 The work order also tells the agent how to read the sketches of the languages it touches, for
 example that a Vue component's `on…` fields are events declared with `defineEmits`.
