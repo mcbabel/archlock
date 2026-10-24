@@ -5,7 +5,7 @@ __paths__ = ["src/config/**"]
 __depends_on__ = ["core"]
 
 AgentName: TypeAlias = '"claude" | "codex" | "opencode" | "custom"'
-Language: TypeAlias = '"typescript" | "python" | "go" | "rust" | "java"'
+Language: TypeAlias = '"typescript" | "python" | "go" | "rust" | "java" | "csharp"'
 
 class ArchlockConfig(Protocol):
     agent: '{ default: AgentName; command: string | null; maxRounds: number; verifyCommands: string[] }'

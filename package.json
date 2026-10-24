@@ -73,6 +73,7 @@
     "@changesets/cli": "^2.31.1",
     "@types/node": "^20.19.43",
     "@types/picomatch": "^4.0.3",
+    "tree-sitter-c-sharp": "0.23.5",
     "tree-sitter-go": "0.25.0",
     "tree-sitter-java": "0.23.5",
     "tree-sitter-python": "0.25.0",

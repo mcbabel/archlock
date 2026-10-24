@@ -13,8 +13,15 @@ import {
 export const CONFIG_FILE = "archlock.config.json";
 export const SCHEMA_URL = "https://unpkg.com/archlock/schema.json";
 
-export type Language = "typescript" | "python" | "go" | "rust" | "java";
-export const LANGUAGES: readonly Language[] = ["typescript", "python", "go", "rust", "java"];
+export type Language = "typescript" | "python" | "go" | "rust" | "java" | "csharp";
+export const LANGUAGES: readonly Language[] = [
+  "typescript",
+  "python",
+  "go",
+  "rust",
+  "java",
+  "csharp",
+];
 export type AgentName = "claude" | "codex" | "opencode" | "custom";
 export const AGENT_NAMES: readonly AgentName[] = ["claude", "codex", "opencode", "custom"];
 
@@ -47,6 +54,7 @@ export const DEFAULT_EXCLUDE = [
   "**/conftest.py",
   "**/*_test.go",
   "**/testdata/**",
+  "**/obj/**",
 ];
 
 /**

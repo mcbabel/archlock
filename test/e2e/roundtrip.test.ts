@@ -26,6 +26,8 @@ const FIXTURES = [
   "rust-crate",
   "java-app",
   "java-multi",
+  "csharp-app",
+  "csharp-single",
 ];
 
 /** Warnings a fixture contains on purpose (edge cases); errors are never expected. */
