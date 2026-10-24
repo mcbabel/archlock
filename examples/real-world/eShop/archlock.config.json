@@ -4,7 +4,6 @@
   "sketchDir": "archlock",
   "languages": ["typescript", "csharp"],
   "include": [
-    "src/**",
     "src/Basket.API/**",
     "src/Catalog.API/**",
     "src/ClientApp/**",

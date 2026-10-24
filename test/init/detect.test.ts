@@ -112,4 +112,23 @@ describe("workspaces with code in the root package", () => {
     ]);
     expect(d.include).toEqual(["src/main/java/**"]);
   });
+
+  it("C#: one module per project; test projects, shared folders and web assets", () => {
+    const d = detectModules(copyFixture("csharp-app"), ["csharp", "typescript"]);
+    expect(d.strategy).toBe("csharp-projects");
+    expect(d.modules.map((m) => [m.name, m.paths])).toEqual([
+      ["Shared", ["src/Shared/**"]],
+      ["Shop.Api", ["src/Shop.Api/**"]],
+      ["Shop.Core", ["src/Shop.Core/**"]],
+    ]);
+  });
+
+  it("C#: a single project is split into its folders; Properties/ belongs to the project", () => {
+    const d = detectModules(copyFixture("csharp-single"), ["csharp"]);
+    expect(d.modules.map((m) => [m.name, m.paths])).toEqual([
+      ["Cart", ["Cart/**"]],
+      ["Catalog", ["Catalog/**"]],
+      ["Store", ["*.cs", "Properties/**"]],
+    ]);
+  });
 });

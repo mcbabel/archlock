@@ -205,8 +205,12 @@ export function detectModules(root: string, languages: Language[]): Detection {
     );
     // A folder that is already a module of its language (a C# project with web assets) stays one.
     const taken = new Set(modules.map((m) => m.paths.join("\0")));
-    for (const m of other.modules) if (!taken.has(m.paths.join("\0"))) add(m, "web");
-    include.push(...other.include);
+    const kept = other.modules.filter((m) => !taken.has(m.paths.join("\0")));
+    for (const m of kept) add(m, "web");
+    // Without the dropped modules, their broad includes (`src/**`) would pull in skipped code.
+    include.push(
+      ...(kept.length === other.modules.length ? other.include : kept.flatMap((m) => m.paths)),
+    );
   }
   return {
     languages,
