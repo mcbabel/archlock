@@ -26,6 +26,8 @@ interface Token {
   prefix?: boolean;
   /** A `+` between two types (Rust trait bounds `Error + Send`). */
   binary?: boolean;
+  /** A `?` that ends a type: C# nullables `string?`, TypeScript optional tuple elements. */
+  suffix?: boolean;
 }
 
 const MULTI_PUNCT = ["...", "=>", "?.", "::", "**", "->"];
@@ -174,6 +176,21 @@ function tokenize(input: string): Token[] {
       i++;
       continue;
     }
+    // A `?` that ends a type: C# nullables (`string?`, `List<T?>`, `int?[]`) and TypeScript optional
+    // tuple elements (`[T?]`). Before `,` `)` `]` `>` `;` or the end it cannot start the branch of
+    // a conditional type; before `[` only a `?` without a space in front is a suffix.
+    if (
+      ch === "?" &&
+      last !== undefined &&
+      (isWordLike(last) || (last.kind === "punct" && (last.text === "]" || last.text === ")")))
+    ) {
+      const rest = input.slice(i + 1);
+      if (/^\s*($|[,\])>;])/.test(rest) || (/^\[/.test(rest) && !/\s/.test(input[i - 1] ?? " "))) {
+        push({ kind: "punct", text: "?", suffix: true });
+        i++;
+        continue;
+      }
+    }
     // Java wildcards `List<?>`, `Map<? super K, ? extends V>`: a `?` right after `<` or `,`.
     if (
       ch === "?" &&
@@ -280,7 +297,9 @@ export function canonicalType(input: string): string {
     if (
       t.kind === "punct" &&
       (t.text === "," || t.text === ";") &&
-      (next === undefined || (next.kind === "punct" && CLOSERS.has(next.text)))
+      (next === undefined || (next.kind === "punct" && CLOSERS.has(next.text))) &&
+      // C# array ranks `int[,]` are no trailing separators.
+      !(prev?.kind === "punct" && (prev.text === "[" || prev.text === ","))
     ) {
       continue;
     }
@@ -292,7 +311,7 @@ export function canonicalType(input: string): string {
   const pending: number[][] = [[]];
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i] as Token;
-    if (t.kind !== "punct" || t.prefix) continue;
+    if (t.kind !== "punct" || t.prefix || t.suffix) continue;
     if (t.text === "+") {
       const before = tokens[i - 1];
       const after = tokens[i + 1];
@@ -355,6 +374,8 @@ function needsSpace(
   if (prev.binary || cur.binary) return true;
   if (p === "::" || c === "::") return false;
   if (prev.prefix) return false;
+  if (cur.suffix) return false;
+  if (prev.suffix && c === "[") return false;
   if (cur.prefix) return isWordLike(prev) || isSeparator(p) || (p !== null && BINARY.has(p));
   // Go spellings, none of which occur in TypeScript types: `chan<- T`, `<-chan T`, `*T`, `~T`,
   // `[]T`, `map[K]V`, `func() (T, error)`, `struct{ … }`, `interface{ … }`.
