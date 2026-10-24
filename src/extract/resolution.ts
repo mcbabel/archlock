@@ -13,3 +13,17 @@ export type Resolution =
 export interface Resolver {
   resolve(specifier: string, fromFile: string): Resolution;
 }
+
+/**
+ * Resolves the specifiers that the Rust and C# passes write after resolving names themselves:
+ * `file:<path>` (a file of the repository) and `external:<package>`.
+ */
+export const linkedResolver: Resolver = {
+  resolve(specifier: string): Resolution {
+    if (specifier.startsWith("file:")) return { kind: "file", path: specifier.slice(5) };
+    if (specifier.startsWith("external:")) {
+      return { kind: "external", package: specifier.slice(9) };
+    }
+    return { kind: "unresolved" };
+  },
+};

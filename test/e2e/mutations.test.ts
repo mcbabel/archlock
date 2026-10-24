@@ -209,7 +209,9 @@ interface ComponentMutation extends Mutation {
     | "rust-workspace"
     | "rust-crate"
     | "java-app"
-    | "java-multi";
+    | "java-multi"
+    | "csharp-app"
+    | "csharp-single";
 }
 
 const componentMutations: ComponentMutation[] = [
@@ -601,6 +603,148 @@ const javaMutations: ComponentMutation[] = [
     expected: [{ rule: "undeclared_dependency", module: "core" }],
   },
 ];
+
+const csharpMutations: ComponentMutation[] = [
+  {
+    name: "C#: a new public method changes its class",
+    fixture: "csharp-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/Shop.Core/Orders/Order.cs",
+        "    public Order(string id) => Id = id;",
+        "    public Order(string id) => Id = id;\n\n    public void Cancel() { }",
+      ),
+    expected: [{ rule: "signature_changed", module: "Shop.Core", symbol: "Order" }],
+  },
+  {
+    name: "C#: a member in another part of a partial class changes the class",
+    fixture: "csharp-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/Shop.Core/Orders/Order.Lines.cs",
+        "    public object Clone() => MemberwiseClone();",
+        "    public object Clone() => MemberwiseClone();\n\n    public int Count => lines.Count;",
+      ),
+    expected: [{ rule: "signature_changed", module: "Shop.Core", symbol: "Order" }],
+  },
+  {
+    name: "C#: internal, protected and private members are not part of the API",
+    fixture: "csharp-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/Shop.Core/Orders/Order.cs",
+        "    public Order(string id) => Id = id;",
+        "    public Order(string id) => Id = id;\n    internal void A() { }\n    protected void B() { }\n    private void C() { }\n    void D() { }",
+      ),
+    expected: [],
+  },
+  {
+    name: "C#: a new public type is a new public symbol; an internal one is not",
+    fixture: "csharp-app",
+    apply: (d) => {
+      write(
+        d,
+        "src/Shop.Core/Orders/Refund.cs",
+        "namespace Shop.Core.Orders;\n\npublic class Refund { }\n",
+      );
+      write(d, "src/Shop.Core/Orders/Audit.cs", "namespace Shop.Core.Orders;\n\nclass Audit { }\n");
+    },
+    expected: [{ rule: "public_symbol_added", module: "Shop.Core", symbol: "Refund" }],
+  },
+  {
+    name: "C#: a new enum member changes the enum",
+    fixture: "csharp-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/Shop.Core/Orders/OrderStatus.cs",
+        "    Shipped,",
+        "    Shipped,\n    Cancelled,",
+      ),
+    expected: [{ rule: "signature_changed", module: "Shop.Core", symbol: "OrderStatus" }],
+  },
+  {
+    name: "C#: using a type of a referenced project is a new dependency",
+    fixture: "csharp-app",
+    apply: (d) => {
+      edit(
+        d,
+        "src/Shop.Core/Shop.Core.csproj",
+        "</Project>",
+        '  <ItemGroup>\n    <ProjectReference Include="..\\Shop.Api\\Shop.Api.csproj" />\n  </ItemGroup>\n</Project>',
+      );
+      edit(
+        d,
+        "src/Shop.Core/Billing/Invoice.cs",
+        "    public bool IsPaid { get; init; }",
+        "    public bool IsPaid { get; init; }\n\n    public object? Source { get; } = typeof(Shop.Api.Controllers.OrdersController);",
+      );
+    },
+    expected: [
+      { rule: "signature_changed", module: "Shop.Core", symbol: "Invoice" },
+      { rule: "undeclared_dependency", module: "Shop.Core" },
+    ],
+  },
+  {
+    name: "C#: a type of a project that is not referenced is no dependency",
+    fixture: "csharp-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/Shop.Core/Billing/Invoice.cs",
+        "namespace Shop.Core.Billing;",
+        "using Shop.Api.Controllers;\n\nnamespace Shop.Core.Billing;",
+      ),
+    expected: [],
+  },
+  {
+    name: "C#: a type from a parent namespace is a dependency without a using",
+    fixture: "csharp-single",
+    apply: (d) =>
+      edit(
+        d,
+        "Catalog/Product.cs",
+        "    public decimal Price { get; set; }",
+        "    public decimal Price { get; set; }\n\n    public Cart.ShoppingCart? LastCart { get; set; }",
+      ),
+    expected: [
+      { rule: "signature_changed", module: "Catalog", symbol: "Product" },
+      { rule: "undeclared_dependency", module: "Catalog" },
+    ],
+  },
+  {
+    name: "C#: framework and package usings are no module dependencies",
+    fixture: "csharp-single",
+    apply: (d) =>
+      edit(
+        d,
+        "Catalog/Catalog.cs",
+        /^/,
+        "using System.Text.Json;\nusing Microsoft.Extensions.Logging;\n",
+      ),
+    expected: [],
+  },
+];
+
+describe("targeted changes to C# code produce exactly the expected violation", () => {
+  for (const m of csharpMutations) {
+    it(m.name, async () => {
+      const dir = copyFixture(m.fixture);
+      expect((await archlock(dir, "init", "--yes")).code).toBe(0);
+      m.apply(dir);
+      const result = await checkJson(dir);
+      const got = result.violations.map((v) => ({
+        rule: v.rule,
+        module: v.module,
+        ...(v.symbol ? { symbol: v.symbol } : {}),
+      }));
+      expect(got).toEqual(m.expected);
+    });
+  }
+});
 
 describe("targeted changes to Java code produce exactly the expected violation", () => {
   for (const m of javaMutations) {

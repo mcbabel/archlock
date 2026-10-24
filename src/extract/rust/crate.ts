@@ -5,7 +5,8 @@
  * and inline paths (`crate::`, `self::`, `super::`, own modules, workspace crates, dependencies)
  * to files, computes each file's exports (`pub` items, `pub use` re-exports, the items of
  * `pub mod` children as `child__item`), and attaches `impl` blocks to their types. Paths become
- * `file:<path>` (a file of the repository) or `crate:<package>` (an external crate) specifiers.
+ * `file:<path>` (a file of the repository) or `external:<package>` (an external crate)
+ * specifiers, which `linkedResolver` resolves.
  */
 
 import { existsSync } from "node:fs";
@@ -13,19 +14,9 @@ import { join, posix } from "node:path";
 import { canonicalType } from "../../core/canonical.js";
 import { type ArchSymbol, compareNames } from "../../core/model.js";
 import type { ExportEntry, FileFacts, ImportFact, RustPath } from "../facts.js";
-import type { Resolution, Resolver } from "../resolution.js";
 import type { RustCrate } from "./cargo.js";
 
 const BUILTIN_CRATES = new Set(["std", "core", "alloc", "proc_macro", "test"]);
-
-/** Resolves the specifiers the crate pass writes. */
-export const rustResolver: Resolver = {
-  resolve(specifier: string): Resolution {
-    if (specifier.startsWith("file:")) return { kind: "file", path: specifier.slice(5) };
-    if (specifier.startsWith("crate:")) return { kind: "external", package: specifier.slice(6) };
-    return { kind: "unresolved" };
-  },
-};
 
 interface ModuleInfo {
   crate: RustCrate;
@@ -236,7 +227,7 @@ export function linkRustCrates(
     for (const p of rust.paths) {
       const r = resolve(file, p.segments, p.inline);
       if (!r || r.kind === "builtin") continue;
-      if (r.kind === "external") add(p, `crate:${r.package}`, ["*"]);
+      if (r.kind === "external") add(p, `external:${r.package}`, ["*"]);
       else add(p, `file:${r.file}`, p.glob || r.rest.length === 0 ? ["*"] : [r.rest.join("__")]);
     }
     for (const m of rust.mods) {

@@ -1,7 +1,7 @@
 # archlock on real-world projects
 
-These folders contain the sketches archlock generates for seven well-known open-source projects.
-Flask, Gin, ripgrep and Spring PetClinic are straight from `archlock init --yes`. Hono, Zod and shadcn-svelte also have the small
+These folders contain the sketches archlock generates for eight well-known open-source projects.
+Flask, Gin, ripgrep, Spring PetClinic and eShop are straight from `archlock init --yes`. Hono, Zod and shadcn-svelte also have the small
 hand edits a user would make after `init` (see below). Only archlock's output is stored here, never the projects'
 code. `regenerate.sh` reproduces everything, including the hand edits, from the pinned commits.
 
@@ -14,6 +14,7 @@ code. `regenerate.sh` reproduces everything, including the hand edits, from the 
 | [Gin](https://github.com/gin-gonic/gin) | Go | [`0f09c3a`](https://github.com/gin-gonic/gin/tree/0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646) | MIT | 7 | 194 | 6,785 → 630 lines (**11×**) |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | Rust | [`6892bc2`](https://github.com/BurntSushi/ripgrep/tree/6892bc2b7efe5909cbbeec8f757ed2c4c76b1d30) | Unlicense or MIT | 10 | 115 | 43,627 → 886 lines (**49×**) |
 | [Spring PetClinic](https://github.com/spring-projects/spring-petclinic) | Java | [`500158f`](https://github.com/spring-projects/spring-petclinic/tree/500158f732419217507c7656904b8e6aa1bcc0d6) | Apache-2.0 | 5 | 18 | 1,644 → 92 lines (**18×**) |
+| [eShop](https://github.com/dotnet/eShop) | C# | [`913acea`](https://github.com/dotnet/eShop/tree/913acea66708a59595351174cee9b29f37179d29) | MIT | 20 | 477 | 19,546 → 3,428 lines (**5.7×**) |
 
 Lines are non-blank lines of non-test source files and of the generated sketches.
 
@@ -49,7 +50,7 @@ would do in an editor, followed by `archlock accept`. `regenerate.sh` replays th
 
 ## What archlock found
 
-`archlock check` right after `init` reports **no errors** for all seven projects (the sketches
+`archlock check` right after `init` reports **no errors** for all eight projects (the sketches
 describe the code exactly). It does report warnings that are real architecture observations:
 
 - **Hono** (81 `deep_import` warnings, cycle `client → hono → router → utils → helper → jsx`):
@@ -85,16 +86,23 @@ describe the code exactly). It does report warnings that are real architecture o
   `org.springframework.samples.petclinic` (`owner`, `vet`, `system`, `model`) plus the root
   package. `owner` and `vet` build on the shared `model` entities. The web controllers are
   package-private, so the public API is the entities, repositories, formatters and validators.
+- **eShop** (no warnings, no cycles): one module per project, plus `Shared` for the source files
+  several projects compile in. The dependencies follow the project references: the services
+  build on `eShop.ServiceDefaults` and the `EventBus` abstractions, `Ordering.API` on
+  `Ordering.Domain` and `Ordering.Infrastructure`, and nothing depends on the API projects.
+  Projects that are only used through extension methods in framework namespaces (the RabbitMQ
+  event bus, registered with `AddRabbitMqEventBus`) do not appear as dependencies. The ratio is
+  low because much of eShop's code is DTOs, records and API models, all of which are public API.
 
 The share of `'<inferred>'` types (public API without annotations) is 4% for Hono, 7% for Zod,
-6% for Flask, 1% for Gin, 0% for ripgrep and Spring PetClinic (Rust and Java have no
-unannotated public API) and 29% for shadcn-svelte, whose Svelte 5 state classes (`.svelte.ts`) rely on
+6% for Flask, 1% for Gin, 0% for ripgrep, Spring PetClinic and eShop (Rust, Java and C# have
+almost no unannotated public API) and 29% for shadcn-svelte, whose Svelte 5 state classes (`.svelte.ts`) rely on
 inference (`readonly props = $derived.by(…)`).
 
 ## Measurements
 
 On a desktop PC: `init` 0.6 s (Hono), 0.8 s (Zod), 0.4 s (Flask), 2.2 s (shadcn-svelte, 2,145
-Svelte files), 0.4 s (Gin), 0.7 s (ripgrep), 0.4 s (Spring PetClinic); `check` with a warm cache is faster still. (Earlier, in a slower container: 1.2 s, 1.5 s and 0.9 s.) Running `init` twice produces byte-identical files, and every
+Svelte files), 0.4 s (Gin), 0.7 s (ripgrep), 0.4 s (Spring PetClinic), 1.1 s (eShop); `check` with a warm cache is faster still. (Earlier, in a slower container: 1.2 s, 1.5 s and 0.9 s.) Running `init` twice produces byte-identical files, and every
 generated sketch satisfies `render(parse(sketch)) === sketch`.
 
 ## Licenses
@@ -105,6 +113,7 @@ their copyright notices are reproduced here:
 - Hono: MIT License, Copyright (c) 2021 - present, Yusuke Wada and Hono contributors.
 - Zod: MIT License, Copyright (c) 2025 Colin McDonnell.
 - Flask: BSD-3-Clause License, Copyright 2010 Pallets.
+- eShop: MIT License, Copyright (c) .NET Foundation and Contributors.
 - Spring PetClinic: Apache License 2.0, Copyright 2012-2025 the original author or authors.
 - ripgrep: dual-licensed under the Unlicense and the MIT License, Copyright (c) 2015 Andrew Gallant.
 - Gin: MIT License, Copyright (c) 2014-present Manuel Martínez-Almeida.

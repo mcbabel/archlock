@@ -366,10 +366,10 @@ export function buildProject(
       // Go and Java the unit is the package (directory): files of one Go package that define
       // the same name are build variants (`open_linux.go`, `open_windows.go`), and the first one
       // wins.
-      // Go and Java packages are directories.
+      // Go and Java packages are directories; C# namespaces usually follow them.
       const inPackageDir = (file: string) => {
         const language = files.get(file)?.language;
-        return language === "go" || language === "java";
+        return language === "go" || language === "java" || language === "csharp";
       };
       const unitOf = (file: string) => (inPackageDir(file) ? `${posix.dirname(file)}/` : file);
       const unitsOf = new Map<string, Set<string>>();

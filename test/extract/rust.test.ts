@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { moduleFromCode } from "../../src/engine/fromcode.js";
 import type { FileFacts } from "../../src/extract/facts.js";
 import { buildProject } from "../../src/extract/project.js";
+import { linkedResolver } from "../../src/extract/resolution.js";
 import { parseToml, type RustCrate, readCargoCrates } from "../../src/extract/rust/cargo.js";
-import { linkRustCrates, rustResolver } from "../../src/extract/rust/crate.js";
+import { linkRustCrates } from "../../src/extract/rust/crate.js";
 import { extractRustFile } from "../../src/extract/rust/file.js";
 import { renderSketch } from "../../src/sketch/render.js";
 import { getRustParser } from "../../src/sketch/treesitter.js";
@@ -35,7 +36,7 @@ async function sketchOf(files: Record<string, string>): Promise<string> {
   const project = buildProject(
     facts,
     [{ name: "m", paths: ["src/**"], entry: "src/lib.rs" }],
-    () => rustResolver,
+    () => linkedResolver,
   );
   const text = renderSketch(moduleFromCode(project.modules.get("m") as never));
   return text.split("\n").slice(4).join("\n").trim();
@@ -279,9 +280,9 @@ pub fn check() { serde_json::to_string(&1); crate::model::User; Vec::<u8>::new()
       "file:core/src/model.rs User",
       "file:core/src/lib.rs run",
       "file:core/src/model/admin/sub.rs Thing",
-      "crate:serde_json *",
-      "crate:mystery *",
-      "crate:serde_json *",
+      "external:serde_json *",
+      "external:mystery *",
+      "external:serde_json *",
       "file:core/src/model.rs User",
     ]);
     expect(imports("app/src/main.rs")).toEqual([

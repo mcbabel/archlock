@@ -108,6 +108,18 @@ describe("push prompt golden files", () => {
     golden("java-app.prompt.md", await prompt(dir));
   });
 
+  it("C#: a planned property and method", async () => {
+    const dir = copyFixture("csharp-single");
+    await archlock(dir, "init", "--yes");
+    edit(
+      dir,
+      "archlock/Catalog.arch.py",
+      "    Price: decimal",
+      "    Discount: 'decimal?'\n    Price: decimal\n    def WithPrice(self, price: decimal) -> Product: ...",
+    );
+    golden("csharp-single.prompt.md", await prompt(dir));
+  });
+
   it("Python: new module planned in a sketch", async () => {
     const dir = copyFixture("py-src");
     await archlock(dir, "init", "--yes");

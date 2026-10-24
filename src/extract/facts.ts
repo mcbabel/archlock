@@ -1,12 +1,12 @@
 /**
- * Language-neutral facts about one source file. Extractors (TypeScript, Python, Go, Rust, Java)
- * produce them;
+ * Language-neutral facts about one source file. Extractors (TypeScript, Python, Go, Rust, Java,
+ * C#) produce them;
  * `project.ts` turns them into modules, dependency edges and public APIs.
  */
 
 import type { ArchSymbol, FieldMember, MethodMember } from "../core/model.js";
 
-export type SourceLanguage = "typescript" | "python" | "go" | "rust" | "java";
+export type SourceLanguage = "typescript" | "python" | "go" | "rust" | "java" | "csharp";
 
 export interface ImportFact {
   specifier: string;
@@ -66,6 +66,36 @@ export interface FileFacts {
   javaPackage?: string;
   /** Rust only: what the crate pass (`linkRustCrates`) needs to resolve paths and re-exports. */
   rust?: RustFacts;
+  /** C# only: what the project pass (`linkCSharp`) needs to resolve type names. */
+  csharp?: CSharpFacts;
+}
+
+export interface CSharpFacts {
+  /** Namespaces declared in the file (file-scoped or block), outermost first. */
+  namespaces: string[];
+  usings: {
+    /** `System.Text`, or the target of an alias. */
+    name: string;
+    /** `using Json = Newtonsoft.Json;`. */
+    alias: string | null;
+    /** `using static System.Math;`. */
+    static: boolean;
+    /** `global using …;`: in scope in every file of the project. */
+    global: boolean;
+    line: number;
+    column: number;
+  }[];
+  /** Every type the file declares (also internal and nested ones), for name resolution. */
+  types: {
+    /** `Order`, or `Order.Line` for a nested type. */
+    name: string;
+    namespace: string;
+    partial: boolean;
+    /** The sketch name of a public type (`Order__Line`), null when it is not public. */
+    exported: string | null;
+  }[];
+  /** Capitalized names used in code (`Invoice`, `Billing.Invoice`), with their first position. */
+  refs: { name: string; line: number; column: number }[];
 }
 
 /** A `use` leaf (`use a::b::{c as d, e::*}` has two), or an inline path like `crate::x::f()`. */

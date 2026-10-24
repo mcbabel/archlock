@@ -3,8 +3,16 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { Language, Parser } from "web-tree-sitter";
 
-/** Grammars shipped in `dist/wasm/`, named after their npm packages. */
-type Grammar = "tree-sitter-python" | "tree-sitter-go" | "tree-sitter-rust" | "tree-sitter-java";
+/** Grammars shipped in `dist/wasm/`: npm package → WASM file name. */
+const GRAMMARS = {
+  "tree-sitter-python": "tree-sitter-python.wasm",
+  "tree-sitter-go": "tree-sitter-go.wasm",
+  "tree-sitter-rust": "tree-sitter-rust.wasm",
+  "tree-sitter-java": "tree-sitter-java.wasm",
+  "tree-sitter-c-sharp": "tree-sitter-c_sharp.wasm",
+} as const;
+
+type Grammar = keyof typeof GRAMMARS;
 
 const parsers = new Map<Grammar, Promise<Parser>>();
 
@@ -13,7 +21,7 @@ const parsers = new Map<Grammar, Promise<Parser>>();
  * from the dev dependency of the same name.
  */
 function wasmPath(grammar: Grammar): string {
-  const file = `${grammar}.wasm`;
+  const file = GRAMMARS[grammar];
   const candidates = [
     new URL(`./wasm/${file}`, import.meta.url),
     new URL(`../wasm/${file}`, import.meta.url),
@@ -66,4 +74,9 @@ export function getRustParser(): Promise<Parser> {
 /** Returns a shared tree-sitter parser for Java sources. */
 export function getJavaParser(): Promise<Parser> {
   return getParser("tree-sitter-java");
+}
+
+/** Returns a shared tree-sitter parser for C# sources. */
+export function getCSharpParser(): Promise<Parser> {
+  return getParser("tree-sitter-c-sharp");
 }

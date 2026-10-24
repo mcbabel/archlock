@@ -107,6 +107,7 @@ const STRATEGY_LABEL = {
   "go-packages": "Go packages",
   "rust-crates": "Rust crates and modules",
   "java-packages": "Java source roots and packages",
+  "csharp-projects": "C# projects",
   workspaces: "workspace packages",
   "python-package": "subpackages of the Python package",
   src: "subdirectories of src/",

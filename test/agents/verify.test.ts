@@ -26,6 +26,7 @@ describe("suggested verifyCommands", () => {
     expect(suggestedVerifyCommands(["src/main/java/com/acme/App.java"])).toEqual([
       "mvn -q compile",
     ]);
+    expect(suggestedVerifyCommands(["src/Shop.Core/Order.cs"])).toEqual(["dotnet build"]);
     expect(suggestedVerifyCommands(["README.md"])).toEqual([]);
   });
 });

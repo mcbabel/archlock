@@ -1,14 +1,14 @@
 /**
  * Heuristic module detection for `archlock init`. Go code becomes one module per package
  * (directory), Rust code one per crate or top-level module, Java code one per source root or
- * top-level package. For other code the first strategy that finds modules wins:
+ * top-level package, C# code one per project. For other code the first strategy that finds modules wins:
  * 1. workspace packages of a monorepo,
  * 2. subpackages of a single top-level Python package,
  * 3. subdirectories of `src/` (plus a module for files directly in `src/`),
  * 4. top-level directories that contain code.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { DEFAULT_EXCLUDE, type Language } from "../config/config.js";
 import {
@@ -16,9 +16,11 @@ import {
   type ModuleSpec,
   parseGoMod,
   readCargoCrates,
+  readCsProjects,
   readWorkspacePackages,
 } from "../extract/index.js";
 import {
+  CS_EXTENSIONS,
   GO_EXTENSIONS,
   JAVA_EXTENSIONS,
   listSourceFiles,
@@ -33,6 +35,7 @@ export interface Detection {
     | "go-packages"
     | "rust-crates"
     | "java-packages"
+    | "csharp-projects"
     | "workspaces"
     | "python-package"
     | "src"
@@ -72,6 +75,7 @@ export function detectLanguages(root: string): Language[] {
       ...GO_EXTENSIONS,
       ...RS_EXTENSIONS,
       ...JAVA_EXTENSIONS,
+      ...CS_EXTENSIONS,
     ],
   });
   if (
@@ -93,6 +97,7 @@ export function detectLanguages(root: string): Language[] {
   ) {
     langs.push("java");
   }
+  if (files.some((f) => f.endsWith(".cs"))) langs.push("csharp");
   return langs.length > 0 ? langs : ["typescript"];
 }
 
@@ -148,6 +153,7 @@ export function detectModules(root: string, languages: Language[]): Detection {
     ...(languages.includes("go") ? GO_EXTENSIONS : []),
     ...(languages.includes("rust") ? RS_EXTENSIONS : []),
     ...(languages.includes("java") ? JAVA_EXTENSIONS : []),
+    ...(languages.includes("csharp") ? CS_EXTENSIONS : []),
   ];
   const files = listSourceFiles(root, { include: ["**"], exclude: DEFAULT_EXCLUDE, extensions });
 
@@ -165,6 +171,11 @@ export function detectModules(root: string, languages: Language[]): Detection {
     const java = javaPackages(root, javaFiles);
     if (java.modules.length > 0) parts.push({ strategy: "java-packages", ...java });
   }
+  const csFiles = files.filter((f) => f.endsWith(".cs"));
+  if (csFiles.length > 0) {
+    const cs = csharpProjects(root, csFiles);
+    if (cs.modules.length > 0) parts.push({ strategy: "csharp-projects", ...cs });
+  }
   const first = parts[0];
   if (!first) return detectOther(root, languages, files);
 
@@ -179,20 +190,27 @@ export function detectModules(root: string, languages: Language[]): Detection {
     "go-packages": "go",
     "rust-crates": "rs",
     "java-packages": "java",
+    "csharp-projects": "cs",
   };
   for (const p of parts) for (const m of p.modules) add(m, suffix[p.strategy] ?? "x");
   const include = parts.flatMap((p) => p.include);
-  const own = [".go", ".rs", ".java"];
+  const own = [".go", ".rs", ".java", ".cs"];
   const rest = files.filter((f) => !own.some((e) => f.endsWith(e)));
   if (rest.length > 0) {
     // A mixed repository (e.g. a Go service with a web frontend).
     const other = detectOther(
       root,
-      languages.filter((l) => l !== "go" && l !== "rust" && l !== "java"),
+      languages.filter((l) => l !== "go" && l !== "rust" && l !== "java" && l !== "csharp"),
       rest,
     );
-    for (const m of other.modules) add(m, "web");
-    include.push(...other.include);
+    // A folder that is already a module of its language (a C# project with web assets) stays one.
+    const taken = new Set(modules.map((m) => m.paths.join("\0")));
+    const kept = other.modules.filter((m) => !taken.has(m.paths.join("\0")));
+    for (const m of kept) add(m, "web");
+    // Without the dropped modules, their broad includes (`src/**`) would pull in skipped code.
+    include.push(
+      ...(kept.length === other.modules.length ? other.include : kept.flatMap((m) => m.paths)),
+    );
   }
   return {
     languages,
@@ -200,6 +218,106 @@ export function detectModules(root: string, languages: Language[]): Detection {
     modules: sortSpecs(modules),
     include: [...new Set(include)].sort(),
   };
+}
+
+/** The last segment of a test, benchmark or sample project's name (`Shop.Tests`, `TestConsole`). */
+const CS_NOT_PROJECT = /(^|\.)(test\w*|\w*(tests?|specs?|benchmarks?|samples?|examples?))$/i;
+const CS_NOT_PROJECT_DIR = /(^|\/)(tests?|samples?|examples?|benchmarks?)(\/|$)/i;
+
+/**
+ * C#: one module per project (`.csproj`), named after it (`Ordering.API`); a single project is
+ * split into its subdirectories when it has two or more with code. Test, benchmark and sample
+ * projects are skipped.
+ */
+function csharpProjects(
+  root: string,
+  csFiles: string[],
+): { modules: ModuleSpec[]; include: string[] } {
+  const projects: { dir: string; name: string }[] = [];
+  const skipped: string[] = [];
+  for (const { dir } of readCsProjects(root)) {
+    let csproj: string | undefined;
+    try {
+      csproj = readdirSync(join(root, dir))
+        .filter((f) => f.endsWith(".csproj"))
+        .sort()[0];
+    } catch {
+      continue;
+    }
+    if (!csproj) continue;
+    const name = csproj.slice(0, -".csproj".length);
+    let text = "";
+    try {
+      text = readFileSync(join(root, dir, csproj), "utf8");
+    } catch {
+      // An unreadable project file still names a project.
+    }
+    const isTest =
+      CS_NOT_PROJECT.test(name) ||
+      CS_NOT_PROJECT_DIR.test(dir) ||
+      /Microsoft\.NET\.Test\.Sdk|<IsTestProject>\s*true/i.test(text);
+    const prefix = dir === "" ? "" : `${dir}/`;
+    if (isTest) skipped.push(dir);
+    else if (csFiles.some((f) => f.startsWith(prefix))) projects.push({ dir, name });
+  }
+  // Source folders outside every project, shared by several of them through `<Compile Include>`.
+  const inside = (f: string, dir: string) => dir === "" || f.startsWith(`${dir}/`);
+  const loose = csFiles.filter(
+    (f) =>
+      ![...projects.map((p) => p.dir), ...skipped].some((d) => inside(f, d)) &&
+      !CS_NOT_PROJECT_DIR.test(f),
+  );
+  const looseDirs = [
+    ...new Set(loose.map((f) => (posix.dirname(f) === "." ? "" : posix.dirname(f)))),
+  ].sort();
+  for (const dir of looseDirs) {
+    if (dir === "" || looseDirs.some((d) => d !== dir && inside(dir, d))) continue;
+    projects.push({ dir, name: posix.basename(dir) });
+  }
+  projects.sort((a, b) => (a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0));
+  const under = (dir: string) => (dir === "" ? "**" : `${dir}/**`);
+  const dotted = (name: string) => name.split(".").map(moduleName).join(".");
+  if (projects.length > 1) {
+    const seen = new Set<string>();
+    const modules = projects.map((p) => {
+      let name = dotted(p.name);
+      if (seen.has(name)) name = `${name}_${moduleName(p.dir)}`;
+      seen.add(name);
+      return { name, paths: [under(p.dir)], entry: null };
+    });
+    return { modules, include: projects.map((p) => under(p.dir)).sort() };
+  }
+  const project = projects[0];
+  if (!project) return { modules: [], include: [] };
+  const prefix = project.dir === "" ? "" : `${project.dir}/`;
+  const subdirs = dirsWithCode(
+    csFiles.filter((f) => f.startsWith(prefix)),
+    prefix,
+  ).filter((d) => !["bin", "obj", "Properties"].includes(d));
+  const name = dotted(project.name);
+  if (subdirs.length < 2) {
+    return {
+      modules: [{ name, paths: [under(project.dir)], entry: null }],
+      include: [under(project.dir)],
+    };
+  }
+  const names = uniqueNames(subdirs.map((d) => ({ raw: d })));
+  const modules: ModuleSpec[] = subdirs.map((d, i) => ({
+    name: names[i] as string,
+    paths: [`${prefix}${d}/**`],
+    entry: null,
+  }));
+  // The project's own files: loose ones and `Properties/` (assembly attributes).
+  const own = csFiles.filter((f) => f.startsWith(prefix) && !f.slice(prefix.length).includes("/"));
+  const properties = csFiles.some((f) => f.startsWith(`${prefix}Properties/`));
+  if (own.length > 0 || properties) {
+    modules.push({
+      name: names.includes(name) ? `${name}_root` : name,
+      paths: [`${prefix}*.cs`, ...(properties ? [`${prefix}Properties/**`] : [])],
+      entry: null,
+    });
+  }
+  return { modules, include: [under(project.dir)] };
 }
 
 const JAVA_TEST_ROOT =

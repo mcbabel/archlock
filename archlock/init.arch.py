@@ -8,7 +8,7 @@ class Detection(Protocol):
     include: 'string[]'
     languages: 'Language[]'
     modules: 'ModuleSpec[]'
-    strategy: '"go-packages" | "rust-crates" | "java-packages" | "workspaces" | "python-package" | "src" | "top-level"'
+    strategy: '"go-packages" | "rust-crates" | "java-packages" | "csharp-projects" | "workspaces" | "python-package" | "src" | "top-level"'
 
 def detectLanguages(root: string) -> 'Language[]': ...
 def detectModules(root: string, languages: 'Language[]') -> Detection: ...

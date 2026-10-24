@@ -21,13 +21,16 @@ export default defineConfig({
   onSuccess: async () => {
     const require = createRequire(import.meta.url);
     mkdirSync("dist/wasm", { recursive: true });
-    for (const grammar of [
-      "tree-sitter-python",
-      "tree-sitter-go",
-      "tree-sitter-rust",
-      "tree-sitter-java",
-    ]) {
-      copyFileSync(require.resolve(`${grammar}/${grammar}.wasm`), `dist/wasm/${grammar}.wasm`);
+    // npm package → WASM file name (the C# grammar's file differs from its package name).
+    const grammars: [string, string][] = [
+      ["tree-sitter-python", "tree-sitter-python.wasm"],
+      ["tree-sitter-go", "tree-sitter-go.wasm"],
+      ["tree-sitter-rust", "tree-sitter-rust.wasm"],
+      ["tree-sitter-java", "tree-sitter-java.wasm"],
+      ["tree-sitter-c-sharp", "tree-sitter-c_sharp.wasm"],
+    ];
+    for (const [pkg, file] of grammars) {
+      copyFileSync(require.resolve(`${pkg}/${file}`), `dist/wasm/${file}`);
     }
   },
   define: {

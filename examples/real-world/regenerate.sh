@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerates the sketches in this folder from pinned commits of seven open-source projects.
+# Regenerates the sketches in this folder from pinned commits of eight open-source projects.
 # Only archlock's output is stored here, never the projects' code.
 # After `archlock init`, `customize` applies the edits a user would make by hand (see README.md):
 # Zod's single big module and the shadcn-svelte docs app are split into their parts, and
@@ -21,6 +21,7 @@ REPOS=(
   "gin https://github.com/gin-gonic/gin 0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646"
   "ripgrep https://github.com/BurntSushi/ripgrep 6892bc2b7efe5909cbbeec8f757ed2c4c76b1d30"
   "spring-petclinic https://github.com/spring-projects/spring-petclinic 500158f732419217507c7656904b8e6aa1bcc0d6"
+  "eShop https://github.com/dotnet/eShop 913acea66708a59595351174cee9b29f37179d29"
 )
 
 # Sets a top-level key in archlock.config.json.
@@ -104,4 +105,4 @@ node -e '
     numbers[name] = { codeLines: s.codeLines, sketchLines: s.sketchLines, modules: s.modules, symbols: s.symbols };
   }
   fs.writeFileSync(out, JSON.stringify(numbers, null, 2) + "\n");
-' "$WORK" "$HERE/numbers.json" hono zod flask shadcn-svelte gin ripgrep spring-petclinic
+' "$WORK" "$HERE/numbers.json" hono zod flask shadcn-svelte gin ripgrep spring-petclinic eShop

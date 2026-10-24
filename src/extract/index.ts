@@ -4,6 +4,7 @@ import type { ArchlockConfig } from "../config/config.js";
 import { abbreviateSymbols } from "../core/abbreviate.js";
 import { type ArchlockCache, hashText } from "../fs/cache.js";
 import {
+  CS_EXTENSIONS,
   GO_EXTENSIONS,
   JAVA_EXTENSIONS,
   listSourceFiles,
@@ -12,6 +13,7 @@ import {
   TS_EXTENSIONS,
 } from "../fs/files.js";
 import {
+  getCSharpParser,
   getGoParser,
   getJavaParser,
   getPythonParser,
@@ -19,6 +21,8 @@ import {
 } from "../sketch/treesitter.js";
 import { extractComponentFile } from "./components/component.js";
 import { frameworkOf } from "./components/sfc.js";
+import { extractCSharpFile } from "./csharp/file.js";
+import { linkCSharp, readCsProjects } from "./csharp/project.js";
 import { deserializeFacts, type FileFacts, type SerializedFacts, serializeFacts } from "./facts.js";
 import { attachGoMethods, extractGoFile } from "./go/file.js";
 import { GoResolver, readGoMods } from "./go/resolve.js";
@@ -27,14 +31,15 @@ import { JavaResolver, javaSourceRoots } from "./java/resolve.js";
 import { buildProject, type CodeProject, type ModuleSpec, Ownership } from "./project.js";
 import { extractPythonFile } from "./python/file.js";
 import { PythonResolver, pythonRoots } from "./python/resolve.js";
-import type { Resolver } from "./resolution.js";
+import { linkedResolver, type Resolver } from "./resolution.js";
 import { readCargoCrates } from "./rust/cargo.js";
-import { linkRustCrates, rustResolver } from "./rust/crate.js";
+import { linkRustCrates } from "./rust/crate.js";
 import { extractRustFile } from "./rust/file.js";
 import { extractTypeScriptFile } from "./typescript/file.js";
 import { TypeScriptResolver } from "./typescript/resolve.js";
 import { readWorkspacePackages } from "./workspaces.js";
 
+export { readCsProjects } from "./csharp/project.js";
 export { parseGoMod } from "./go/resolve.js";
 export {
   type CodeModule,
@@ -61,6 +66,7 @@ export function sourceExtensions(config: ArchlockConfig): string[] {
   if (config.languages.includes("go")) ext.push(...GO_EXTENSIONS);
   if (config.languages.includes("rust")) ext.push(...RS_EXTENSIONS);
   if (config.languages.includes("java")) ext.push(...JAVA_EXTENSIONS);
+  if (config.languages.includes("csharp")) ext.push(...CS_EXTENSIONS);
   return ext;
 }
 
@@ -80,11 +86,13 @@ export async function extractProject(
   const go = files.some((f) => f.endsWith(".go")) ? await getGoParser() : null;
   const rust = files.some((f) => f.endsWith(".rs")) ? await getRustParser() : null;
   const java = files.some((f) => f.endsWith(".java")) ? await getJavaParser() : null;
+  const csharp = files.some((f) => f.endsWith(".cs")) ? await getCSharpParser() : null;
   const extract = (file: string, text: string): FileFacts => {
     if (python && file.endsWith(".py")) return extractPythonFile(python, file, text);
     if (go && file.endsWith(".go")) return extractGoFile(go, file, text);
     if (rust && file.endsWith(".rs")) return extractRustFile(rust, file, text);
     if (java && file.endsWith(".java")) return extractJavaFile(java, file, text);
+    if (csharp && file.endsWith(".cs")) return extractCSharpFile(csharp, file, text);
     if (frameworkOf(file)) return extractComponentFile(file, text);
     return extractTypeScriptFile(file, text);
   };
@@ -100,6 +108,7 @@ export async function extractProject(
   attachGoMethods(facts);
   const ownership = new Ownership(specs);
   if (rust) linkRustCrates(root, facts, readCargoCrates(root), (f) => ownership.owner(f));
+  if (csharp) linkCSharp(facts, readCsProjects(root));
 
   const workspaceModules = new Map<string, string>();
   for (const pkg of readWorkspacePackages(root)) {
@@ -115,7 +124,7 @@ export async function extractProject(
   const resolverFor = (f: FileFacts): Resolver => {
     if (f.language === "python" && pyResolver) return pyResolver;
     if (f.language === "go" && goResolver) return goResolver;
-    if (f.language === "rust") return rustResolver;
+    if (f.language === "rust" || f.language === "csharp") return linkedResolver;
     if (f.language === "java" && javaResolver) return javaResolver;
     return tsResolver;
   };

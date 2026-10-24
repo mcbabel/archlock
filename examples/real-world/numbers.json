@@ -40,5 +40,11 @@
     "sketchLines": 92,
     "modules": 5,
     "symbols": 18
+  },
+  "eShop": {
+    "codeLines": 19546,
+    "sketchLines": 3428,
+    "modules": 20,
+    "symbols": 477
   }
 }

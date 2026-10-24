@@ -211,6 +211,36 @@ clauses, annotations, enum constant arguments and bodies, and default values. Wh
 of a module have a type of the same name, both are qualified with their package
 (`order__Status`, `api__Status`).
 
+### Mapping from C#
+
+`init` makes one module per project (`.csproj`), named after it (`Ordering.API`), and splits a
+single project into its subdirectories. Test, benchmark and sample projects are not modules;
+folders of `.cs` files outside every project (shared sources) are. A module's API is the
+`public` types of its files and their `public` members (in interfaces every member without an
+access modifier). Partial types are one type. Types stay C# types, with `<…>` written `[…]` as
+for TypeScript.
+
+| C# | Sketch |
+|---|---|
+| `public sealed class Order : Entity, IComparable<Order>` | `@sealed class Order(Entity, IComparable[Order]):` |
+| `public string Name { get; set; }` / `{ get; }`, `{ get; init; }`, `{ get; private set; }`, `=> …` | `Name: string` / `Readonly[string]` |
+| `public const int Max = 1;`, `public static readonly string Prefix` | `Max: ClassVar[Readonly[int]]`, `Prefix: ClassVar[Readonly[string]]` |
+| `public event EventHandler? Changed;` | `Changed: 'event EventHandler?'` |
+| indexer `public Line this[int index]` | `def __getitem__(self, index: int) -> Line` |
+| constructors, overloads | `def __init__(self, …)`, several `def`s marked `@overload` |
+| `public static T Parse<T>(string s, out int pos, int retries = 3) where T : new()` | `@staticmethod def Parse['T: new ()'](s: string, pos: 'out int', retries: int = ...) -> T` |
+| `params Line[] lines`, `this Order o` (extension method) | `*lines: 'Line[]'`, `o: 'this Order'` |
+| `public interface IRepo<TKey> : IDisposable` | `class IRepo[TKey](IDisposable, Protocol):` |
+| `public enum Status : byte { New, Paid = 2 }` | `class Status(byte, Enum):` with `New = ...`, `Paid = ...` |
+| `public record Invoice(string Id)`, `public readonly record struct Money(decimal Amount)` | `@record class Invoice:` with `Id: Readonly[string]`; `@readonly @record @struct class Money:` |
+| `public struct Point`, `public static class Ext`, `abstract` | `@struct`, `@static`, `@abstract` above the class |
+| `public delegate void Handler(object sender);` | `Handler: TypeAlias = 'delegate void(object sender)'` |
+| public nested type `Order.Line` | `class Order__Line` |
+
+`internal`, `protected`, `private` and `file` members are not part of the sketch, nor are
+attributes, operators, conversion operators, static constructors and finalizers. When two
+folders of a module have a type of the same name, both are qualified with their folder.
+
 ### Mapping from Python
 
 Python maps almost 1:1: functions, classes, `Protocol`s, `Enum`s and dataclass fields keep their

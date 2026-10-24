@@ -58,6 +58,15 @@ describe("canonicalType", () => {
     ["Map<? super K,?>", "Map[? super K, ?]"],
     ["Class<?>[]", "Class[?][]"],
     ["String [] []", "String[][]"],
+    // C#: nullables and array ranks.
+    ["string ?", "string?"],
+    ["Task<Order<T>?>", "Task[Order[T]?]"],
+    ["int?[]", "int?[]"],
+    ["int[ , ]", "int[,]"],
+    ["(string?, int)", "(string?, int)"],
+    ["T extends [] ? [] : [T?]", "T extends [] ? [] : [T?]"],
+    // Sketches written before the suffix rule keep matching.
+    ["[A, B ? ]", "[A, B?]"],
     ["a?.new<T>", "a?.new[T]"],
     ["[string, number, ...rest: T[]]", "[string, number, ...rest: T[]]"],
     ["(A | B)[]", "(A | B)[]"],
