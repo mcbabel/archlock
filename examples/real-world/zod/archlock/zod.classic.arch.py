@@ -772,7 +772,7 @@ class ZodType['out Output = unknown', 'out Input = unknown', 'out Internals exte
     def register['R extends core.$ZodRegistry'](
         self,
         registry: R,
-        *meta: '<this extends R["_schema"] ? undefined extends R["_meta"] ? … (157 chars, #945f10f3)>',
+        *meta: '<this extends R["_schema"] ? undefined extends R["_meta"] ? … (155 chars, #9743d838)>',
     ) -> this: ...
     def safeDecode(
         self,

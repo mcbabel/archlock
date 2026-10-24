@@ -177,7 +177,7 @@
 <section id="numbers" aria-labelledby="num-title">
   <div class="wrap">
     <h2 id="num-title">On real projects</h2>
-    <p class="intro">Sketches of seven well-known open-source projects at pinned commits, reproducible with one script. Flask is straight from <code>init</code>; Zod and the shadcn-svelte docs app were split into their parts by hand afterwards, the way you would adjust your own modules.</p>
+    <p class="intro">Sketches of eight well-known open-source projects at pinned commits, reproducible with one script. Flask is straight from <code>init</code>; Zod and the shadcn-svelte docs app were split into their parts by hand afterwards, the way you would adjust your own modules.</p>
     <div class="table">
       <table class="stack">
         <thead>
@@ -191,6 +191,7 @@
           <tr><th scope="row"><a href="https://github.com/mcbabel/archlock/tree/main/examples/real-world/gin/archlock">Gin</a></th><td data-label="Language">Go</td><td data-label="Modules" class="num">7</td><td data-label="Code → architecture" class="num">6,785 → 630 lines</td><td data-label="Ratio" class="num">11×</td><td data-label="check">0 errors, 0 warnings</td></tr>
           <tr><th scope="row"><a href="https://github.com/mcbabel/archlock/tree/main/examples/real-world/ripgrep/archlock">ripgrep</a></th><td data-label="Language">Rust</td><td data-label="Modules" class="num">10</td><td data-label="Code → architecture" class="num">43,627 → 886 lines</td><td data-label="Ratio" class="num">49×</td><td data-label="check">0 errors, 0 warnings</td></tr>
           <tr><th scope="row"><a href="https://github.com/mcbabel/archlock/tree/main/examples/real-world/spring-petclinic/archlock">Spring PetClinic</a></th><td data-label="Language">Java</td><td data-label="Modules" class="num">5</td><td data-label="Code → architecture" class="num">1,644 → 92 lines</td><td data-label="Ratio" class="num">18×</td><td data-label="check">0 errors, 0 warnings</td></tr>
+          <tr><th scope="row"><a href="https://github.com/mcbabel/archlock/tree/main/examples/real-world/eShop/archlock">eShop</a></th><td data-label="Language">C#</td><td data-label="Modules" class="num">20</td><td data-label="Code → architecture" class="num">19,546 → 3,428 lines</td><td data-label="Ratio" class="num">5.7×</td><td data-label="check">0 errors, 0 warnings</td></tr>
         </tbody>
       </table>
     </div>
@@ -231,7 +232,7 @@
       </details>
       <details>
         <summary>Which languages?</summary>
-        <p>TypeScript and JavaScript (<code>.ts .tsx .mts .cts .js .jsx .mjs .cjs</code>, tsconfig <code>paths</code>, pnpm/npm/yarn workspaces), Vue, Svelte and Astro components (<code>.vue .svelte .astro</code>: props and events are the component's signature), Python (src and flat layouts, <code>__all__</code>, dataclasses, Protocols, Enums) Go (one module per package, <code>go.mod</code> module paths, methods, generics, embedding) Rust (Cargo workspaces, crates and top-level modules, <code>pub use</code> re-exports, traits, enums with data) and Java (Maven and Gradle source roots, packages, records, enums, sealed types), also mixed in one repository. More languages are on the roadmap; the extractor interface is small.</p>
+        <p>TypeScript and JavaScript (<code>.ts .tsx .mts .cts .js .jsx .mjs .cjs</code>, tsconfig <code>paths</code>, pnpm/npm/yarn workspaces), Vue, Svelte and Astro components (<code>.vue .svelte .astro</code>: props and events are the component's signature), Python (src and flat layouts, <code>__all__</code>, dataclasses, Protocols, Enums) Go (one module per package, <code>go.mod</code> module paths, methods, generics, embedding) Rust (Cargo workspaces, crates and top-level modules, <code>pub use</code> re-exports, traits, enums with data) Java (Maven and Gradle source roots, packages, records, enums, sealed types) and C# (projects, namespaces, project references, partial types, records), also mixed in one repository. More languages are on the roadmap; the extractor interface is small.</p>
       </details>
       <details>
         <summary>What does it not do yet?</summary>

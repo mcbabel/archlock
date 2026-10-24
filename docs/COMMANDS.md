@@ -2,7 +2,7 @@
 
 | Command | What it does |
 |---|---|
-| `archlock init` | Detects modules (Go packages, Rust crates and modules, Java source roots and packages, workspaces, `src/` folders, Python packages), writes `archlock.config.json`, one sketch per module and `archlock/README.md` with a Mermaid graph. `--agents` adds a section to `AGENTS.md`/`CLAUDE.md`, `--with-summaries` asks your agent for docstring suggestions, `--force` starts over. |
+| `archlock init` | Detects modules (Go packages, Rust crates and modules, Java source roots and packages, C# projects, workspaces, `src/` folders, Python packages), writes `archlock.config.json`, one sketch per module and `archlock/README.md` with a Mermaid graph. `--agents` adds a section to `AGENTS.md`/`CLAUDE.md`, `--with-summaries` asks your agent for docstring suggestions, `--force` starts over. |
 | `archlock check` | Compares code and sketches. `--format human\|json\|github`. Exit 1 on errors. |
 | `archlock accept [module…]` | Adopts code changes into the sketches, keeping comments. Shows a diff and asks first. `--deps-only`, `--symbols-only`, `--yes`. |
 | `archlock push` | Lets your agent change the code to match the sketches, round by round. `--agent`, `--print-prompt`, `--max-rounds`, `--check-command`, `--yes`. Tested end to end with Claude Code; see [AGENTS.md](AGENTS.md). |
@@ -33,5 +33,6 @@ layouts, `__all__`, dataclasses, Protocols, Enums) and **Go** (`.go`: one module
 [FORMAT.md](FORMAT.md#mapping-from-go)) and **Rust** (`.rs`: Cargo workspaces, crates and top-level
 modules, `pub use` re-exports, `impl` blocks; see [FORMAT.md](FORMAT.md#mapping-from-rust)) and
 **Java** (`.java`: Maven and Gradle source roots and packages, records, enums, sealed types; see
-[FORMAT.md](FORMAT.md#mapping-from-java)), also mixed in one repository. Adding a language:
+[FORMAT.md](FORMAT.md#mapping-from-java)) and **C#** (`.cs`: projects, namespaces, project references,
+partial types, records; see [FORMAT.md](FORMAT.md#mapping-from-c)), also mixed in one repository. Adding a language:
 [CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-language).

@@ -11,7 +11,7 @@ other agent works through `agent.command`, or paste the output of `archlock push
 Details: [AGENTS.md](AGENTS.md).
 
 **Which languages?** TypeScript/JavaScript (including Vue, Svelte and Astro components), Python,
-Go, Rust and Java, also mixed. See
+Go, Rust, Java and C#, also mixed. See
 [COMMANDS.md](COMMANDS.md#languages).
 
 **Does it send data anywhere?** No telemetry, no service. See [SECURITY.md](../SECURITY.md).

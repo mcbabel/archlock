@@ -1,0 +1,58 @@
+{
+  "$schema": "https://unpkg.com/archlock/schema.json",
+  "version": 1,
+  "sketchDir": "archlock",
+  "languages": ["typescript", "csharp"],
+  "include": [
+    "src/**",
+    "src/Basket.API/**",
+    "src/Catalog.API/**",
+    "src/ClientApp/**",
+    "src/EventBus/**",
+    "src/EventBusRabbitMQ/**",
+    "src/HybridApp/**",
+    "src/Identity.API/**",
+    "src/IntegrationEventLogEF/**",
+    "src/OrderProcessor/**",
+    "src/Ordering.API/**",
+    "src/Ordering.Domain/**",
+    "src/Ordering.Infrastructure/**",
+    "src/PaymentProcessor/**",
+    "src/Shared/**",
+    "src/WebApp/**",
+    "src/WebAppComponents/**",
+    "src/WebhookClient/**",
+    "src/Webhooks.API/**",
+    "src/eShop.AppHost/**",
+    "src/eShop.ServiceDefaults/**"
+  ],
+  "exclude": [
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/__tests__/**",
+    "tests/**",
+    "**/test_*.py",
+    "**/*_test.py",
+    "**/conftest.py",
+    "**/*_test.go",
+    "**/testdata/**",
+    "**/obj/**"
+  ],
+  "rules": {
+    "undeclared_dependency": "error",
+    "unused_dependency": "info",
+    "undeclared_external": "error",
+    "public_symbol_added": "error",
+    "planned_not_implemented": "error",
+    "signature_changed": "error",
+    "kind_changed": "error",
+    "deep_import": "warn",
+    "unassigned_file": "warn",
+    "dependency_cycle": "off"
+  },
+  "agent": {
+    "default": "claude",
+    "command": null,
+    "maxRounds": 3
+  }
+}
