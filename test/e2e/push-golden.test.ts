@@ -90,6 +90,24 @@ describe("push prompt golden files", () => {
     golden("rust-crate.prompt.md", await prompt(dir));
   });
 
+  it("Java: a planned method and enum constant", async () => {
+    const dir = copyFixture("java-app");
+    await archlock(dir, "init", "--yes");
+    edit(
+      dir,
+      "archlock/order.arch.py",
+      "    SHIPPED = ...",
+      "    SHIPPED = ...\n    CANCELLED = ...",
+    );
+    edit(
+      dir,
+      "archlock/order.arch.py",
+      "    def place(self, order: Order) -> Invoice: ...",
+      "    def cancel(self, order: Order, reason: String) -> boolean: ...\n    def place(self, order: Order) -> Invoice: ...",
+    );
+    golden("java-app.prompt.md", await prompt(dir));
+  });
+
   it("Python: new module planned in a sketch", async () => {
     const dir = copyFixture("py-src");
     await archlock(dir, "init", "--yes");
