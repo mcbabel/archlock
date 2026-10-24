@@ -182,6 +182,35 @@ items when they parse as Rust. `#[cfg(test)]` and `#[test]` code is skipped. The
 (`&self`, `&mut self`, `self`), `unsafe` and `const fn`, enum discriminants and trait methods of
 `impl Trait for Type` blocks are not part of the sketch.
 
+### Mapping from Java
+
+`init` makes one module per source root of a multi-module Maven or Gradle build, and splits a
+single source root into the direct subpackages of its common root package (`com.acme.shop.order`
+→ `order`) plus one module for the root package's classes. Test roots (`src/test/java`) are not
+modules. A module's API is the `public` types of its packages; the members of a type are its
+`public` fields, methods and constructors, and in interfaces and annotation types every member
+that is not `private`. Types stay Java types, with `<…>` written `[…]` as for TypeScript.
+
+| Java | Sketch |
+|---|---|
+| `public class Order extends Base implements Comparable<Order>` | `class Order(Base, Comparable[Order]):` |
+| `public abstract`, `public final`, `public sealed` class | `@abstract`, `@final`, `@sealed` above the class |
+| `public static final int MAX = 50;` / `public final String id;` / `public String name;` | `MAX: ClassVar[Readonly[int]]` / `id: Readonly[String]` / `name: String` |
+| constructors, overloads | `def __init__(self, …)`, several `def`s marked `@overload` |
+| `public static <T> List<T> of(T... items)` | `@staticmethod def of[T](*items: T) -> List[T]` |
+| `public abstract Status get(String id)` | `@abstractmethod def get(self, id: String) -> Status` |
+| `void`, arrays, wildcards | `-> void`, `'int[]'`, `'Collection[? extends T]'` |
+| `public interface Repo<K> extends AutoCloseable { int LIMIT = 5; K find(K id); default … static … }` | `class Repo[K](AutoCloseable, Protocol):` with `LIMIT: ClassVar[Readonly[int]]` and the methods |
+| `public enum Status implements Serializable { NEW, PAID; public String label() }` | `class Status(Serializable, Enum):` with `NEW = ...`, `PAID = ...`, `def label(self) -> String` |
+| `public record Point(int x, int y) implements Shape` | `@record class Point(Shape):` with `x: Readonly[int]`, `y: Readonly[int]` |
+| `public @interface Audited { String value() default ""; }` | `@annotation class Audited(Protocol):` with `def value(self) -> String` |
+| public nested type `Order.Line` | `class Order__Line` |
+
+Package-private, `protected` and `private` members are not part of the sketch, nor are `throws`
+clauses, annotations, enum constant arguments and bodies, and default values. When two packages
+of a module have a type of the same name, both are qualified with their package
+(`order__Status`, `api__Status`).
+
 ### Mapping from Python
 
 Python maps almost 1:1: functions, classes, `Protocol`s, `Enum`s and dataclass fields keep their

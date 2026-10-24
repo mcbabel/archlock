@@ -1,12 +1,12 @@
 /**
- * Language-neutral facts about one source file. Extractors (TypeScript, Python, Go, Rust) produce
- * them;
+ * Language-neutral facts about one source file. Extractors (TypeScript, Python, Go, Rust, Java)
+ * produce them;
  * `project.ts` turns them into modules, dependency edges and public APIs.
  */
 
 import type { ArchSymbol, FieldMember, MethodMember } from "../core/model.js";
 
-export type SourceLanguage = "typescript" | "python" | "go" | "rust";
+export type SourceLanguage = "typescript" | "python" | "go" | "rust" | "java";
 
 export interface ImportFact {
   specifier: string;
@@ -62,6 +62,8 @@ export interface FileFacts {
    * package than its type, so they are attached per package after extraction.
    */
   goMethods?: { receiver: string; method: MethodMember }[];
+  /** Java only: the file's package (`com.acme.shop`; empty for the default package). */
+  javaPackage?: string;
   /** Rust only: what the crate pass (`linkRustCrates`) needs to resolve paths and re-exports. */
   rust?: RustFacts;
 }

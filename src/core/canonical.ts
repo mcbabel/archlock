@@ -174,6 +174,17 @@ function tokenize(input: string): Token[] {
       i++;
       continue;
     }
+    // Java wildcards `List<?>`, `Map<? super K, ? extends V>`: a `?` right after `<` or `,`.
+    if (
+      ch === "?" &&
+      last?.kind === "punct" &&
+      (last.text === "[" || last.text === ",") &&
+      /^\s*(extends\b|super\b|[>\],])/.test(input.slice(i + 1))
+    ) {
+      push({ kind: "word", text: "?" });
+      i++;
+      continue;
+    }
     if (
       ch === "?" &&
       /[A-Za-z_]/.test(input[i + 1] ?? "") &&

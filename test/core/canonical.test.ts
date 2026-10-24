@@ -53,6 +53,11 @@ describe("canonicalType", () => {
     ["T: ?Sized + Clone", "T: ?Sized + Clone"],
     ["where <T as Iterator>::Item: Send", "where [T as Iterator]::Item: Send"],
     ["macro_rules !", "macro_rules!"],
+    // Java: wildcards and arrays.
+    ["List<? extends T>", "List[? extends T]"],
+    ["Map<? super K,?>", "Map[? super K, ?]"],
+    ["Class<?>[]", "Class[?][]"],
+    ["String [] []", "String[][]"],
     ["a?.new<T>", "a?.new[T]"],
     ["[string, number, ...rest: T[]]", "[string, number, ...rest: T[]]"],
     ["(A | B)[]", "(A | B)[]"],

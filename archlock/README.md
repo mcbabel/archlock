@@ -6,7 +6,7 @@ This folder is the architecture lockfile of this repository, maintained with [ar
 Each `*.arch.py` file sketches one module: which files belong to it, which modules it may depend on,
 and its public API. CI runs `archlock check`, so every architecture change is visible and deliberate.
 
-**11,802 lines of code → 756 lines of architecture (16×)**
+**12,455 lines of code → 758 lines of architecture (16×)**
 
 ```mermaid
 graph LR
@@ -65,12 +65,12 @@ graph LR
 | [core](./core.arch.py) | Language-neutral architecture model, type canonicalization, rules and the comment-preserving merge. | 55 | – |
 | [engine](./engine.arch.py) | The deterministic core as functions: open a workspace, compare code with sketches, compute stats. | 27 | config, core, extract, fs, git, sketch |
 | [extract](./extract.arch.py) | Source code → file facts → modules with public APIs, dependency edges and deep imports. | 15 | config, core, fs, sketch |
-| [fs](./fs.arch.py) | File system helpers: .gitignore-aware file listing, globs, POSIX paths and the file-hash cache. | 16 | core |
+| [fs](./fs.arch.py) | File system helpers: .gitignore-aware file listing, globs, POSIX paths and the file-hash cache. | 17 | core |
 | [git](./git.arch.py) | Read-only git helpers for `archlock diff`: base resolution, temporary worktrees, changed lines. | 9 | – |
 | [init](./init.arch.py) | Heuristic module and language detection for `archlock init`. | 4 | config, extract, fs |
 | [mcp](./mcp.arch.py) | MCP server (stdio) exposing the architecture and the check to coding agents. Read-only. | 2 | config, core, engine, extract, report |
 | [report](./report.arch.py) | Presentation: terminal, JSON, GitHub annotations, Mermaid graph, README and text diffs. | 26 | core, engine |
-| [sketch](./sketch.arch.py) | The .arch.py format: parse (web-tree-sitter), render (deterministic), load and write. | 42 | core, fs |
+| [sketch](./sketch.arch.py) | The .arch.py format: parse (web-tree-sitter), render (deterministic), load and write. | 43 | core, fs |
 
 To change the design, edit a sketch and run `archlock push` to let your coding agent update the code.
 To adopt an intended code change, run `archlock accept`.

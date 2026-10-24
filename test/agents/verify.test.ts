@@ -23,6 +23,9 @@ describe("suggested verifyCommands", () => {
       "go build ./...",
     ]);
     expect(suggestedVerifyCommands(["src/lib.rs", "build.rs"])).toEqual(["cargo check"]);
+    expect(suggestedVerifyCommands(["src/main/java/com/acme/App.java"])).toEqual([
+      "mvn -q compile",
+    ]);
     expect(suggestedVerifyCommands(["README.md"])).toEqual([]);
   });
 });

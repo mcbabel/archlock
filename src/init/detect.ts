@@ -1,6 +1,7 @@
 /**
  * Heuristic module detection for `archlock init`. Go code becomes one module per package
- * (directory), Rust code one per crate or top-level module. For other code the first strategy that finds modules wins:
+ * (directory), Rust code one per crate or top-level module, Java code one per source root or
+ * top-level package. For other code the first strategy that finds modules wins:
  * 1. workspace packages of a monorepo,
  * 2. subpackages of a single top-level Python package,
  * 3. subdirectories of `src/` (plus a module for files directly in `src/`),
@@ -19,6 +20,7 @@ import {
 } from "../extract/index.js";
 import {
   GO_EXTENSIONS,
+  JAVA_EXTENSIONS,
   listSourceFiles,
   PY_EXTENSIONS,
   RS_EXTENSIONS,
@@ -27,7 +29,14 @@ import {
 
 export interface Detection {
   languages: Language[];
-  strategy: "go-packages" | "rust-crates" | "workspaces" | "python-package" | "src" | "top-level";
+  strategy:
+    | "go-packages"
+    | "rust-crates"
+    | "java-packages"
+    | "workspaces"
+    | "python-package"
+    | "src"
+    | "top-level";
   modules: ModuleSpec[];
   include: string[];
 }
@@ -57,7 +66,13 @@ export function detectLanguages(root: string): Language[] {
   const files = listSourceFiles(root, {
     include: ["**"],
     exclude: DEFAULT_EXCLUDE,
-    extensions: [...TS_EXTENSIONS, ...PY_EXTENSIONS, ...GO_EXTENSIONS, ...RS_EXTENSIONS],
+    extensions: [
+      ...TS_EXTENSIONS,
+      ...PY_EXTENSIONS,
+      ...GO_EXTENSIONS,
+      ...RS_EXTENSIONS,
+      ...JAVA_EXTENSIONS,
+    ],
   });
   if (
     has("tsconfig.json") ||
@@ -70,6 +85,14 @@ export function detectLanguages(root: string): Language[] {
     langs.push("python");
   if (has("go.mod") || files.some((f) => f.endsWith(".go"))) langs.push("go");
   if (has("Cargo.toml") || files.some((f) => f.endsWith(".rs"))) langs.push("rust");
+  if (
+    has("pom.xml") ||
+    has("build.gradle") ||
+    has("build.gradle.kts") ||
+    files.some((f) => f.endsWith(".java"))
+  ) {
+    langs.push("java");
+  }
   return langs.length > 0 ? langs : ["typescript"];
 }
 
@@ -124,6 +147,7 @@ export function detectModules(root: string, languages: Language[]): Detection {
     ...(languages.includes("python") ? PY_EXTENSIONS : []),
     ...(languages.includes("go") ? GO_EXTENSIONS : []),
     ...(languages.includes("rust") ? RS_EXTENSIONS : []),
+    ...(languages.includes("java") ? JAVA_EXTENSIONS : []),
   ];
   const files = listSourceFiles(root, { include: ["**"], exclude: DEFAULT_EXCLUDE, extensions });
 
@@ -136,6 +160,11 @@ export function detectModules(root: string, languages: Language[]): Detection {
     const rust = rustCrates(root, rsFiles);
     if (rust.modules.length > 0) parts.push({ strategy: "rust-crates", ...rust });
   }
+  const javaFiles = files.filter((f) => f.endsWith(".java"));
+  if (javaFiles.length > 0) {
+    const java = javaPackages(root, javaFiles);
+    if (java.modules.length > 0) parts.push({ strategy: "java-packages", ...java });
+  }
   const first = parts[0];
   if (!first) return detectOther(root, languages, files);
 
@@ -146,15 +175,20 @@ export function detectModules(root: string, languages: Language[]): Detection {
     taken.add(name);
     modules.push({ ...m, name });
   };
-  for (const p of parts)
-    for (const m of p.modules) add(m, p.strategy === "go-packages" ? "go" : "rs");
+  const suffix: Partial<Record<Detection["strategy"], string>> = {
+    "go-packages": "go",
+    "rust-crates": "rs",
+    "java-packages": "java",
+  };
+  for (const p of parts) for (const m of p.modules) add(m, suffix[p.strategy] ?? "x");
   const include = parts.flatMap((p) => p.include);
-  const rest = files.filter((f) => !f.endsWith(".go") && !f.endsWith(".rs"));
+  const own = [".go", ".rs", ".java"];
+  const rest = files.filter((f) => !own.some((e) => f.endsWith(e)));
   if (rest.length > 0) {
     // A mixed repository (e.g. a Go service with a web frontend).
     const other = detectOther(
       root,
-      languages.filter((l) => l !== "go" && l !== "rust"),
+      languages.filter((l) => l !== "go" && l !== "rust" && l !== "java"),
       rest,
     );
     for (const m of other.modules) add(m, "web");
@@ -166,6 +200,93 @@ export function detectModules(root: string, languages: Language[]): Detection {
     modules: sortSpecs(modules),
     include: [...new Set(include)].sort(),
   };
+}
+
+const JAVA_TEST_ROOT =
+  /(^|\/)(src\/test|src\/it|tests?|testFixtures|it|examples?|samples?)([-_][\w-]*)?(\/|$)/;
+
+/**
+ * Java: one module per source root (Maven or Gradle module); a single source root is split into
+ * the direct subpackages of its common root package (`com.acme.shop.order`) plus one module for
+ * the root package's own classes. Source roots follow from the files' `package` declarations;
+ * test roots are skipped.
+ */
+function javaPackages(
+  root: string,
+  javaFiles: string[],
+): { modules: ModuleSpec[]; include: string[] } {
+  const packages = new Map<string, Set<string>>();
+  for (const f of javaFiles) {
+    let text = "";
+    try {
+      // Comments first: a long Javadoc can precede the declaration.
+      text = readFileSync(join(root, f), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+    } catch {
+      continue;
+    }
+    const pkg = /^\s*package\s+([\w.]+)\s*;/m.exec(text)?.[1] ?? "";
+    const dir = posix.dirname(f) === "." ? "" : posix.dirname(f);
+    const pkgPath = pkg.replace(/\./g, "/");
+    const sourceRoot =
+      pkg === ""
+        ? dir
+        : dir === pkgPath
+          ? ""
+          : dir.endsWith(`/${pkgPath}`)
+            ? dir.slice(0, -pkgPath.length - 1)
+            : null;
+    if (sourceRoot === null || JAVA_TEST_ROOT.test(sourceRoot)) continue;
+    const set = packages.get(sourceRoot) ?? new Set<string>();
+    set.add(pkg);
+    packages.set(sourceRoot, set);
+  }
+  const roots = [...packages.keys()].sort();
+  const under = (dir: string) => (dir === "" ? "**" : `${dir}/**`);
+  if (roots.length > 1) {
+    const names = uniqueNames(
+      roots.map((r) => ({
+        raw: posix.basename(r.replace(/\/?src\/main\/java$/, "")) || "app",
+        scoped: r,
+      })),
+    );
+    const modules = roots.map((r, i) => ({
+      name: names[i] as string,
+      paths: [under(r)],
+      entry: null,
+    }));
+    return { modules, include: roots.map(under).sort() };
+  }
+  const sourceRoot = roots[0];
+  if (sourceRoot === undefined) return { modules: [], include: [] };
+  const pkgs = [...(packages.get(sourceRoot) as Set<string>)].map((p) =>
+    p === "" ? [] : p.split("."),
+  );
+  const common: string[] = [];
+  for (let i = 0; pkgs.every((p) => p[i] !== undefined && p[i] === pkgs[0]?.[i]); i++) {
+    common.push(pkgs[0]?.[i] as string);
+  }
+  const base = [sourceRoot, ...common].filter(Boolean).join("/");
+  const subs = [
+    ...new Set(pkgs.filter((p) => p.length > common.length).map((p) => p[common.length] as string)),
+  ].sort();
+  const rootName = moduleName(common[common.length - 1] ?? (posix.basename(sourceRoot) || "app"));
+  if (subs.length < 2) {
+    return {
+      modules: [{ name: rootName, paths: [under(base)], entry: null }],
+      include: [under(sourceRoot)],
+    };
+  }
+  const names = uniqueNames(subs.map((s) => ({ raw: s })));
+  const modules: ModuleSpec[] = subs.map((sub, i) => ({
+    name: names[i] as string,
+    paths: [`${base}/${sub}/**`],
+    entry: null,
+  }));
+  if (pkgs.some((p) => p.length === common.length)) {
+    const name = names.includes(rootName) ? `${rootName}_root` : rootName;
+    modules.push({ name, paths: [`${base}/*.java`], entry: null });
+  }
+  return { modules, include: [under(sourceRoot)] };
 }
 
 /**

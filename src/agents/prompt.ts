@@ -114,6 +114,7 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
     ...componentNotes(kinds),
     ...goNotes(kinds),
     ...rustNotes(kinds),
+    ...javaNotes(kinds),
     "",
   );
 
@@ -167,7 +168,7 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
   return `${out.join("\n")}\n`;
 }
 
-type SourceKind = "typescript" | "python" | "go" | "rust" | "vue" | "svelte" | "astro";
+type SourceKind = "typescript" | "python" | "go" | "rust" | "java" | "vue" | "svelte" | "astro";
 
 const KIND_OF: [RegExp, SourceKind][] = [
   [/\.vue$/, "vue"],
@@ -176,6 +177,7 @@ const KIND_OF: [RegExp, SourceKind][] = [
   [/\.py$/, "python"],
   [/\.go$/, "go"],
   [/\.rs$/, "rust"],
+  [/\.java$/, "java"],
   [/\.[cm]?[jt]sx?$/, "typescript"],
 ];
 
@@ -236,6 +238,14 @@ function rustNotes(kinds: Set<SourceKind>): string[] {
   ];
 }
 
+function javaNotes(kinds: Set<SourceKind>): string[] {
+  if (!kinds.has("java")) return [];
+  return [
+    "- Java: a module is a package tree; its sketch lists the `public` types of its packages and their `public` members (in interfaces every member that is not `private`). Nested types are `Outer__Inner`; a name that two packages of the module share is qualified with the package (`api__Status`). Types are Java types; `List[String]` means `List<String>`.",
+    "- Java: `class Order(Base, Comparable[Order])` extends `Base` and implements `Comparable<Order>`; `class Repo(Protocol)` is an interface; `@record`, `@abstract`, `@final`, `@sealed` and `@annotation` are the type's kind and modifiers. `def __init__` is a constructor, `@overload` lists overloads, `@staticmethod` is `static`, `*args: String` is `String... args`, and `MAX: ClassVar[Readonly[int]]` is `public static final int MAX`.",
+  ];
+}
+
 const VERIFY_EXAMPLES: [SourceKind, string][] = [
   ["vue", "npx vue-tsc --noEmit"],
   ["svelte", "npx svelte-check"],
@@ -243,6 +253,7 @@ const VERIFY_EXAMPLES: [SourceKind, string][] = [
   ["typescript", "npx tsc --noEmit"],
   ["go", "go build ./..."],
   ["rust", "cargo check"],
+  ["java", "mvn -q compile"],
   ["python", "python -m pytest"],
 ];
 

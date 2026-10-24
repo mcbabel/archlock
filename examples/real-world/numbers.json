@@ -34,5 +34,11 @@
     "sketchLines": 886,
     "modules": 10,
     "symbols": 115
+  },
+  "spring-petclinic": {
+    "codeLines": 1644,
+    "sketchLines": 92,
+    "modules": 5,
+    "symbols": 18
   }
 }

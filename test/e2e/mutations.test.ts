@@ -207,7 +207,9 @@ interface ComponentMutation extends Mutation {
     | "nuxt-app"
     | "go-service"
     | "rust-workspace"
-    | "rust-crate";
+    | "rust-crate"
+    | "java-app"
+    | "java-multi";
 }
 
 const componentMutations: ComponentMutation[] = [
@@ -495,6 +497,127 @@ const rustMutations: ComponentMutation[] = [
     expected: [],
   },
 ];
+
+const javaMutations: ComponentMutation[] = [
+  {
+    name: "Java: a new public method changes its class",
+    fixture: "java-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/main/java/com/acme/shop/order/Order.java",
+        "    public int[] quantities()",
+        "    public void cancel() {}\n\n    public int[] quantities()",
+      ),
+    expected: [{ rule: "signature_changed", module: "order", symbol: "Order" }],
+  },
+  {
+    name: "Java: protected, package-private and private members are not part of the API",
+    fixture: "java-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/main/java/com/acme/shop/order/Order.java",
+        "    public int[] quantities()",
+        "    protected void a() {}\n    void b() {}\n    private void c() {}\n\n    public int[] quantities()",
+      ),
+    expected: [],
+  },
+  {
+    name: "Java: a new public class is a new public symbol; a package-private one is not",
+    fixture: "java-app",
+    apply: (d) => {
+      write(
+        d,
+        "src/main/java/com/acme/shop/order/Refund.java",
+        "package com.acme.shop.order;\n\npublic class Refund {}\n",
+      );
+      write(
+        d,
+        "src/main/java/com/acme/shop/order/Internal.java",
+        "package com.acme.shop.order;\n\nclass Internal {}\n",
+      );
+    },
+    expected: [{ rule: "public_symbol_added", module: "order", symbol: "Refund" }],
+  },
+  {
+    name: "Java: a new enum constant changes the enum",
+    fixture: "java-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/main/java/com/acme/shop/order/Status.java",
+        'NEW, PAID("paid"), SHIPPED;',
+        'NEW, PAID("paid"), SHIPPED, CANCELLED;',
+      ),
+    expected: [{ rule: "signature_changed", module: "order", symbol: "order__Status" }],
+  },
+  {
+    name: "Java: an import of another package is a new dependency",
+    fixture: "java-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/main/java/com/acme/shop/billing/Invoice.java",
+        "import java.time.Instant;",
+        "import java.time.Instant;\nimport com.acme.shop.order.Order;",
+      ),
+    expected: [{ rule: "undeclared_dependency", module: "billing" }],
+  },
+  {
+    name: "Java: a fully qualified name in code is a dependency too",
+    fixture: "java-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/main/java/com/acme/shop/billing/BillingException.java",
+        "super(message, cause); }",
+        "super(message, cause); com.acme.shop.order.Order.class.getName(); }",
+      ),
+    expected: [{ rule: "undeclared_dependency", module: "billing" }],
+  },
+  {
+    name: "Java: JDK and library imports are no module dependencies",
+    fixture: "java-app",
+    apply: (d) =>
+      edit(
+        d,
+        "src/main/java/com/acme/shop/billing/Invoice.java",
+        "import java.time.Instant;",
+        "import java.time.Instant;\nimport java.util.concurrent.*;\nimport com.google.common.collect.ImmutableList;",
+      ),
+    expected: [],
+  },
+  {
+    name: "Java: a dependency between build modules",
+    fixture: "java-multi",
+    apply: (d) =>
+      edit(
+        d,
+        "core/src/main/java/org/demo/core/Greeter.java",
+        "package org.demo.core;",
+        "package org.demo.core;\n\nimport org.demo.app.Main;",
+      ),
+    expected: [{ rule: "undeclared_dependency", module: "core" }],
+  },
+];
+
+describe("targeted changes to Java code produce exactly the expected violation", () => {
+  for (const m of javaMutations) {
+    it(m.name, async () => {
+      const dir = copyFixture(m.fixture);
+      expect((await archlock(dir, "init", "--yes")).code).toBe(0);
+      m.apply(dir);
+      const result = await checkJson(dir);
+      const got = result.violations.map((v) => ({
+        rule: v.rule,
+        module: v.module,
+        ...(v.symbol ? { symbol: v.symbol } : {}),
+      }));
+      expect(got).toEqual(m.expected);
+    });
+  }
+});
 
 describe("targeted changes to Rust code produce exactly the expected violation", () => {
   for (const m of rustMutations) {

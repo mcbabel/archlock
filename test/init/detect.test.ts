@@ -93,4 +93,23 @@ describe("workspaces with code in the root package", () => {
     ]);
     expect(d.include).toEqual(["adapters/**", "src/**"]);
   });
+
+  it("Java: one module per source root; test modules and long package Javadocs are handled", () => {
+    const d = detectModules(copyFixture("java-multi"), ["java"]);
+    expect(d.strategy).toBe("java-packages");
+    expect(d.modules).toEqual([
+      { name: "app", paths: ["app/src/main/java/**"], entry: null },
+      { name: "core", paths: ["core/src/main/java/**"], entry: null },
+    ]);
+  });
+
+  it("Java: a single source root is split into the subpackages of its root package", () => {
+    const d = detectModules(copyFixture("java-app"), ["java"]);
+    expect(d.modules.map((m) => [m.name, m.paths])).toEqual([
+      ["billing", ["src/main/java/com/acme/shop/billing/**"]],
+      ["order", ["src/main/java/com/acme/shop/order/**"]],
+      ["shop", ["src/main/java/com/acme/shop/*.java"]],
+    ]);
+    expect(d.include).toEqual(["src/main/java/**"]);
+  });
 });
