@@ -106,6 +106,7 @@ async function suggestSummaries(
 const STRATEGY_LABEL = {
   "go-packages": "Go packages",
   "rust-crates": "Rust crates and modules",
+  "java-packages": "Java source roots and packages",
   workspaces: "workspace packages",
   "python-package": "subpackages of the Python package",
   src: "subdirectories of src/",

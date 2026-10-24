@@ -21,7 +21,12 @@ export default defineConfig({
   onSuccess: async () => {
     const require = createRequire(import.meta.url);
     mkdirSync("dist/wasm", { recursive: true });
-    for (const grammar of ["tree-sitter-python", "tree-sitter-go", "tree-sitter-rust"]) {
+    for (const grammar of [
+      "tree-sitter-python",
+      "tree-sitter-go",
+      "tree-sitter-rust",
+      "tree-sitter-java",
+    ]) {
       copyFileSync(require.resolve(`${grammar}/${grammar}.wasm`), `dist/wasm/${grammar}.wasm`);
     }
   },

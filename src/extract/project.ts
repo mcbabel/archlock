@@ -363,10 +363,15 @@ export function buildProject(
         }
       }
       // A name defined in several files is qualified with each file's path in the module. In
-      // Go the unit is the package (directory): files of one package that define the same name
-      // are build variants (`open_linux.go`, `open_windows.go`), and the first one wins.
-      const isGo = (file: string) => files.get(file)?.language === "go";
-      const unitOf = (file: string) => (isGo(file) ? `${posix.dirname(file)}/` : file);
+      // Go and Java the unit is the package (directory): files of one Go package that define
+      // the same name are build variants (`open_linux.go`, `open_windows.go`), and the first one
+      // wins.
+      // Go and Java packages are directories.
+      const inPackageDir = (file: string) => {
+        const language = files.get(file)?.language;
+        return language === "go" || language === "java";
+      };
+      const unitOf = (file: string) => (inPackageDir(file) ? `${posix.dirname(file)}/` : file);
       const unitsOf = new Map<string, Set<string>>();
       for (const { file, name } of found) {
         const set = unitsOf.get(name) ?? new Set();
@@ -375,7 +380,10 @@ export function buildProject(
       }
       for (const { file, name, def } of found) {
         const shared = (unitsOf.get(name) as Set<string>).size > 1;
-        addSymbol(shared ? `${filePrefix(mod.spec, file, isGo(file))}__${name}` : name, def);
+        addSymbol(
+          shared ? `${filePrefix(mod.spec, file, inPackageDir(file))}__${name}` : name,
+          def,
+        );
       }
     }
     mod.symbols = [...symbols.values()];

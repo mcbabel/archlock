@@ -34,6 +34,7 @@ export const TS_EXTENSIONS = [
 export const PY_EXTENSIONS = [".py"];
 export const GO_EXTENSIONS = [".go"];
 export const RS_EXTENSIONS = [".rs"];
+export const JAVA_EXTENSIONS = [".java"];
 
 const SKIP_DIRS = new Set([
   "node_modules",

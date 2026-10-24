@@ -24,6 +24,8 @@ const FIXTURES = [
   "go-service",
   "rust-workspace",
   "rust-crate",
+  "java-app",
+  "java-multi",
 ];
 
 /** Warnings a fixture contains on purpose (edge cases); errors are never expected. */
