@@ -3,8 +3,10 @@ __paths__ = ["src/main/java/org/springframework/samples/petclinic/vet/**"]
 __depends_on__ = ["model"]
 
 class VetRepository(Repository[Vet, Integer], Protocol):
+    @throws(DataAccessException)
     @overload
     def findAll(self) -> Collection[Vet]: ...
+    @throws(DataAccessException)
     @overload
     def findAll(self, pageable: Pageable) -> Page[Vet]: ...
 

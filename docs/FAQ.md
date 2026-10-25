@@ -5,8 +5,8 @@ are deterministic and offline: same input, byte-identical output, no model, no n
 `push` (and the optional `init --with-summaries`) start *your* coding agent.
 
 **Which agents?** `push` is tested end to end with Claude Code (on the demo: one round of one to
-two minutes, and the agent compiles its own code through `agent.verifyCommands`). Codex CLI and
-OpenCode are supported (flags checked against their `--help`) but not yet battle-tested. Any
+two minutes, and the agent compiles its own code through `agent.verifyCommands`) and OpenCode.
+Codex CLI is supported (flags checked against its `--help`) but not yet battle-tested. Any
 other agent works through `agent.command`, or paste the output of `archlock push --print-prompt`.
 Details: [AGENTS.md](AGENTS.md).
 
@@ -21,7 +21,8 @@ the file-hash cache. `init` on Hono takes 0.6 s on a desktop PC.
 
 **My project has no type annotations.** archlock writes `'<inferred>'` for missing annotations
 and `archlock stats` shows their share. Names, kinds, parameters and dependencies are still
-checked.
+checked. For TypeScript and JavaScript, `archlock init --typed` (or `"typed": true` in the
+config) lets the TypeScript type checker fill in the missing types.
 
 **Big repository, too strict to start?** Set `__strictness__ = "names"` (names and kinds only)
 or `"deps"` (dependencies only) per module, and tighten later. Severities are configurable.
@@ -36,6 +37,6 @@ highlighting everywhere, and it is the notation LLMs read best. Types are never 
 
 **Does it rewrite my code?** Only `push` changes code, through your agent, and never commits.
 
-**What does it not do yet?** Extraction is syntactic (no type checker yet), there are no edges
-across languages, and `push` has only needed one round with a real agent so far. The full,
-honest list is in [LIMITATIONS.md](LIMITATIONS.md).
+**What does it not do yet?** Extraction is syntactic unless TypeScript's typed mode is on, there
+are no edges across languages, and real agents have run `push` for at most two rounds so far.
+The full, honest list is in [LIMITATIONS.md](LIMITATIONS.md).

@@ -62,16 +62,51 @@ The header comes first: an optional module docstring, then these assignments.
 | `__strictness__` | no (default `"signatures"`) | `"signatures"`: names, kinds and signatures are checked. `"names"`: only names and kinds. `"deps"`: only dependencies. Useful to adopt archlock gradually in large repos. |
 
 Re-exports of symbols defined in another module may follow the header as
-`from .other import a, b`. They are documentation only and never checked.
+`from .other import a, b`. Re-exports of an external package through the module's
+`__entry__` name the package (`from hono.node_server import serve` for
+`export { serve } from "@hono/node-server"`); without an entry they are left out, since every
+file's exports count then and pass-through files (icon registries) would flood the sketch. They
+are documentation only and never checked.
 
 ## Symbols
 
 Symbols are rendered in groups, each sorted alphabetically (case-insensitive): **enums, type
 aliases, protocols (interfaces), classes, functions, constants.** Members of a class are
 rendered fields first (alphabetical), then methods (`__init__` first, then alphabetical).
-Enum members keep their source order because it can be meaningful. A member that carries data
-(Rust) has its type as a string, `Circle = '{ radius: f64 }'`; methods of an enum follow its
-members.
+
+In classes marked `@dataclass` or `@record` the constructor fields come first, in constructor
+order, and that order is checked: swapping two fields changes every positional call
+(`field order: sketch (y, x) · code (x, y)`). Their other fields follow alphabetically.
+
+Enum members keep their source order because it can be meaningful:
+
+| Member | Meaning |
+|---|---|
+| `Draft = ...` | the value is open: any value matches |
+| `Paid = 2`, `Sent = 'sent'`, `On = True` | the value (a Python literal) is part of the contract |
+| `Circle: '{ radius: f64 }'`, `Rect: '(f64, f64)'` | the member carries data of this type (Rust) |
+
+`archlock init` writes the values the code spells out as literals; a value it cannot read
+(`A = 1 << 2`, `object()`) stays `...`. Methods of an enum follow its members.
+
+### Receivers and signature decorators
+
+A method's first parameter is `self` (`cls` for class methods, none for `@staticmethod`). When
+the language has several kinds of receiver, `self: T` names one that is not the usual one:
+`def clear(self: '&mut Self')` (Rust, where `&self` is the default) or `def Valid(self: Role)`
+(a Go value receiver; a pointer receiver is the default). A receiver change is a signature
+change.
+
+Decorators directly above a `def` are part of that signature:
+
+| Decorator | Meaning |
+|---|---|
+| `@throws(IOException, InterruptedException)` | Java `throws` clause |
+| `@unsafe`, `@const`, `@extern("C")` | Rust `unsafe fn`, `const fn`, `extern "C" fn` |
+| `@build("linux \|\| darwin")`, `@cfg(unix)` | one build variant of a name (Go build constraints, Rust `#[cfg]`) |
+
+Build variants with equal signatures are one `def`; variants that differ become `@overload`s,
+each with its `@build` or `@cfg` decorator, so every variant is checked.
 
 ### Mapping from TypeScript
 
@@ -88,12 +123,24 @@ members.
 | interface call / index signature | `def __call__(self, …)` / `def __getitem__(self, key: K) -> V` |
 | `export type T = …` | `T: TypeAlias = …` |
 | generic type alias `type R<T, E> = …` | `R: TypeAlias[T, E] = …` |
-| `export enum E { A, B }` | `class E(Enum):` with `A = ...`, `B = ...` |
+| `export enum E { A, B = 2, C = "c" }` | `class E(Enum):` with `A = ...`, `B = 2`, `C = 'c'` |
 | `export const X: T = …` | `X: T` |
 | `export default …` | the symbol is named `default` |
+| CommonJS `module.exports = { a, b }`, `exports.c = …`, `module.exports = X` | `a`, `b`, `c` as if exported; `module.exports = X` is the default export |
 | generics `<T extends U>` | `def f[T, 'K extends keyof T'](…)` (see type parameters) |
 
-Private members (`private`, `#x`) are not part of the sketch.
+Private and protected members (`private`, `protected`, `#x`) are not part of the sketch: the
+public API is what other modules can call. Names that are not valid Python identifiers are
+mangled (`user$` → `user_`); a name that is already valid keeps itself, and a mangled one that
+would collide with it gets another `_` (`user__`).
+
+With `"typed": true` in `archlock.config.json` (or `archlock init --typed`), the TypeScript type
+checker fills in what the code leaves out: return types, unannotated constants, fields and
+getters, and parameters with a default value. It reads the project's `tsconfig.json` files and
+installed type declarations; a type it cannot resolve stays `'<inferred>'`, and an inferred type
+longer than 200 characters is written `'<complex>'` (its exact spelling is not a useful
+contract). Without typed mode, extraction is purely syntactic. Typed mode does not apply to
+`.vue`, `.svelte` and `.astro` files.
 
 ### Mapping from components (Vue, Svelte, Astro)
 
@@ -117,6 +164,14 @@ component itself is a public symbol named after its file (`user-card.vue` → `U
 | `<script setup generic="T">`, Svelte `generics="T"` | `class List[T](VueComponent):` |
 | other exports (Vue's plain `<script>`, Svelte's module script, Astro frontmatter) | as in TypeScript |
 
+Components a Vue template uses without importing them are dependencies too: auto-imported ones
+are found through the `components.d.ts` files that Nuxt and `unplugin-vue-components` generate
+and, for Nuxt projects without one, through Nuxt's naming rule (`components/base/Button.vue` is
+`<BaseButton>`, `<LazyBaseButton>` loads it lazily). Framework components such as `<NuxtLink>`
+and `<RouterLink>` have no file in the repository and are no dependency. Path aliases come from
+`tsconfig.json`, Vite's `resolve.alias` (read as text), SvelteKit's `$lib` and Nuxt's `~`, `@`,
+`~~` and `@@` (honouring a custom `srcDir`).
+
 Local `interface`s and type aliases are expanded into fields, also across `&` and `extends`;
 types defined elsewhere become bases. Untyped props (`let { text } = $props()`) are
 `'<inferred>'`. Route files are not components: files whose name starts with `+` (SvelteKit)
@@ -136,18 +191,21 @@ package has none. Types stay Go types, written the way gofmt writes them.
 | `func Map[T, U any](…)`, `[K comparable]` | `def Map[T, U](…)`, `['K comparable']` (an `any` constraint is left out) |
 | `type User struct { ID string; *Base; io.Reader }` | `class User('*Base', io.Reader):` with `ID: string` (embedded types are bases) |
 | method `func (u *User) Name() string` in any file of the package | `def Name(self) -> string: ...` inside `class User` |
+| value receiver `func (r Role) Valid() bool` | `def Valid(self: Role) -> bool: ...` |
 | `type Store interface { io.Closer; Get(id ID) (*User, error) }` | `class Store(io.Closer, Protocol):` with `def Get(self, id: ID) -> '(*User, error)'` |
 | type set `interface { ~int \| ~float64 }` | `class Number('~int \| ~float64', Protocol): ...` |
+| an interface with unexported methods (only the package can implement it) | `@sealed` above the class |
 | defined type `type ID string`, `type Handler func(…)` | `class ID(string):`, `class Handler('func(…)'):` (with their methods) |
 | alias `type Name = string` | `Name: TypeAlias = string` |
 | `const ( Red Color = iota; Green )` | `Red: Color`, `Green: Color` (Go has no enums; the iota idiom stays constants) |
 | untyped constant `const Version = "1.0"` | `Version: 'untyped string'` (`untyped int`, `untyped float`, `untyped bool`, …) |
 | `var Count int`, `var ErrClosed = errors.New(…)`, `var Default = &Config{}` | `Count: int`, `ErrClosed: error`, `Default: '*Config'`; other values are `'<inferred>'` |
 
-Struct tags, unexported fields and methods, and the receiver kind (pointer or value) are not part
-of the sketch. Files with `//go:build ignore` are not part of their package. Build variants of a
-package (`path_linux.go`, `path_windows.go`) define a name once: the first file in path order
-counts.
+Struct tags and unexported fields and methods are not part of the sketch: tags are serialization
+details, unexported members are not callable from other packages. Files with `//go:build ignore`
+are not part of their package. Build variants (`path_linux.go`, `path_windows.go`, a `//go:build`
+line) with equal signatures are one symbol; when they differ, each becomes an `@overload` with
+its `@build("…")` constraint.
 
 ### Mapping from Rust
 
@@ -168,8 +226,11 @@ TypeScript.
 | `#[derive(Debug, Clone)] pub struct User { pub id: u64, name: String }` | `class User(Clone, Debug):` with `id: u64` (`pub` fields only) |
 | tuple and unit structs `pub struct Id(pub u64);`, `pub struct Marker;` | `class Id:` with `_0: u64`, `class Marker: ...` |
 | `impl User { pub fn name(&self) -> &str; pub fn new() -> Self }` in any file of the crate | `def name(self) -> '&str'` and `@staticmethod def new() -> Self` inside `class User` |
+| `&mut self`, `self`, `self: Box<Self>` | `self: '&mut Self'`, `self: Self`, `self: Box[Self]` |
+| `pub const fn`, `pub unsafe fn`, `pub extern "C" fn` | `@const`, `@unsafe`, `@extern("C")` above the `def` |
+| `#[cfg(unix)] pub fn home()` and `#[cfg(windows)] pub fn home(user: &str)` | two `@overload`s marked `@cfg(unix)` and `@cfg(windows)` |
 | `impl Display for User` | `Display` becomes a base of `User` (bases are sorted) |
-| `pub enum Shape { Circle { r: f64 }, Rect(f64, f64), Point }` | `class Shape(Enum):` with `Circle = '{ r: f64 }'`, `Rect = '(f64, f64)'`, `Point = ...` |
+| `pub enum Shape { Circle { r: f64 }, Rect(f64, f64), Point, Big = 10 }` | `class Shape(Enum):` with `Circle: '{ r: f64 }'`, `Rect: '(f64, f64)'`, `Point = ...`, `Big = 10` |
 | `pub trait Store: Send { type Item: Clone; const MAX: usize; fn get(&self) -> Self::Item; }` | `class Store(Send, Protocol):` with `Item: 'type: Clone'`, `MAX: ClassVar[usize]`, `def get(self) -> 'Self::Item'` |
 | `pub type Result<T> = std::result::Result<T, Error>;` | `Result: TypeAlias[T] = 'std::result::Result[T, Error]'` |
 | `pub const VERSION: &str`, `pub static COUNT: AtomicUsize` | `VERSION: '&str'`, `COUNT: AtomicUsize` |
@@ -178,9 +239,9 @@ TypeScript.
 | `pub use self::model::User as Account;`, `pub extern crate grep_cli as cli;` | `Account` (the struct), `from .grep_cli import cli` |
 
 Items inside item-level macros such as `cfg_rt! { … }` and the branches of `cfg_if!` are read as
-items when they parse as Rust. `#[cfg(test)]` and `#[test]` code is skipped. The receiver kind
-(`&self`, `&mut self`, `self`), `unsafe` and `const fn`, enum discriminants and trait methods of
-`impl Trait for Type` blocks are not part of the sketch.
+items when they parse as Rust. `#[cfg(test)]` and `#[test]` code is skipped. The methods of an
+`impl Trait for Type` block are not repeated on the type: the trait is a base, and its methods
+are in the trait's own sketch.
 
 ### Mapping from Java
 
@@ -197,17 +258,18 @@ that is not `private`. Types stay Java types, with `<…>` written `[…]` as fo
 | `public abstract`, `public final`, `public sealed` class | `@abstract`, `@final`, `@sealed` above the class |
 | `public static final int MAX = 50;` / `public final String id;` / `public String name;` | `MAX: ClassVar[Readonly[int]]` / `id: Readonly[String]` / `name: String` |
 | constructors, overloads | `def __init__(self, …)`, several `def`s marked `@overload` |
+| `public String read(String path) throws IOException` | `@throws(IOException) def read(self, path: String) -> String` |
 | `public static <T> List<T> of(T... items)` | `@staticmethod def of[T](*items: T) -> List[T]` |
 | `public abstract Status get(String id)` | `@abstractmethod def get(self, id: String) -> Status` |
 | `void`, arrays, wildcards | `-> void`, `'int[]'`, `'Collection[? extends T]'` |
 | `public interface Repo<K> extends AutoCloseable { int LIMIT = 5; K find(K id); default … static … }` | `class Repo[K](AutoCloseable, Protocol):` with `LIMIT: ClassVar[Readonly[int]]` and the methods |
 | `public enum Status implements Serializable { NEW, PAID; public String label() }` | `class Status(Serializable, Enum):` with `NEW = ...`, `PAID = ...`, `def label(self) -> String` |
-| `public record Point(int x, int y) implements Shape` | `@record class Point(Shape):` with `x: Readonly[int]`, `y: Readonly[int]` |
+| `public record Point(int x, int y) implements Shape` | `@record class Point(Shape):` with `x: Readonly[int]`, `y: Readonly[int]` (in component order) |
 | `public @interface Audited { String value() default ""; }` | `@annotation class Audited(Protocol):` with `def value(self) -> String` |
 | public nested type `Order.Line` | `class Order__Line` |
 
-Package-private, `protected` and `private` members are not part of the sketch, nor are `throws`
-clauses, annotations, enum constant arguments and bodies, and default values. When two packages
+Package-private, `protected` and `private` members are not part of the sketch, nor are
+annotations, enum constant arguments and bodies, and default values. When two packages
 of a module have a type of the same name, both are qualified with their package
 (`order__Status`, `api__Status`).
 
@@ -231,20 +293,23 @@ for TypeScript.
 | `public static T Parse<T>(string s, out int pos, int retries = 3) where T : new()` | `@staticmethod def Parse['T: new ()'](s: string, pos: 'out int', retries: int = ...) -> T` |
 | `params Line[] lines`, `this Order o` (extension method) | `*lines: 'Line[]'`, `o: 'this Order'` |
 | `public interface IRepo<TKey> : IDisposable` | `class IRepo[TKey](IDisposable, Protocol):` |
-| `public enum Status : byte { New, Paid = 2 }` | `class Status(byte, Enum):` with `New = ...`, `Paid = ...` |
-| `public record Invoice(string Id)`, `public readonly record struct Money(decimal Amount)` | `@record class Invoice:` with `Id: Readonly[string]`; `@readonly @record @struct class Money:` |
+| `public enum Status : byte { New, Paid = 2 }` | `class Status(byte, Enum):` with `New = ...`, `Paid = 2` |
+| `public static Money operator +(Money a, Money b)`, `implicit operator`, `explicit operator` | `@staticmethod def __add__(a: Money, b: Money) -> Money`, `__implicit__`, `__explicit__` |
+| `public record Invoice(string Id)`, `public readonly record struct Money(decimal Amount)` | `@record class Invoice:` with `Id: Readonly[string]` (parameters in order); `@readonly @record @struct class Money:` |
 | `public struct Point`, `public static class Ext`, `abstract` | `@struct`, `@static`, `@abstract` above the class |
 | `public delegate void Handler(object sender);` | `Handler: TypeAlias = 'delegate void(object sender)'` |
 | public nested type `Order.Line` | `class Order__Line` |
 
 `internal`, `protected`, `private` and `file` members are not part of the sketch, nor are
-attributes, operators, conversion operators, static constructors and finalizers. When two
-folders of a module have a type of the same name, both are qualified with their folder.
+attributes, static constructors and finalizers. When two folders of a module have a type of the
+same name, both are qualified with their folder. Dependencies come from type names, `using`s
+and extension method calls: `services.AddEventBus()` depends on the file that declares the
+extension method `AddEventBus` when its namespace is in scope and its project is referenced.
 
 ### Mapping from Python
 
-Python maps almost 1:1: functions, classes, `Protocol`s, `Enum`s and dataclass fields keep their
-own syntax. A symbol is public if it is listed in `__all__`, or, without `__all__`, if its name
+Python maps almost 1:1: functions, classes, `Protocol`s, `Enum`s (with their literal values)
+and dataclass fields (in constructor order) keep their own syntax. A symbol is public if it is listed in `__all__`, or, without `__all__`, if its name
 does not start with an underscore.
 
 ## Types

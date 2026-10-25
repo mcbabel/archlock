@@ -6,7 +6,7 @@ This folder is the architecture lockfile of this repository, maintained with [ar
 Each `*.arch.py` file sketches one module: which files belong to it, which modules it may depend on,
 and its public API. CI runs `archlock check`, so every architecture change is visible and deliberate.
 
-**45,221 lines of code → 5,824 lines of architecture (7.8×)**
+**45,221 lines of code → 5,827 lines of architecture (7.8×)**
 
 ```mermaid
 graph LR
@@ -35,7 +35,7 @@ graph LR
 
 | Module | Description | Public symbols | Depends on |
 |---|---|---|---|
-| [benchmarks](./benchmarks.arch.py) | – | 39 | zod, zod.core |
+| [benchmarks](./benchmarks.arch.py) | – | 42 | zod, zod.core |
 | [docs](./docs.arch.py) | – | 88 | – |
 | [integration](./integration.arch.py) | – | 16 | mini, zod |
 | [mini](./mini.arch.py) | – | 0 | zod |

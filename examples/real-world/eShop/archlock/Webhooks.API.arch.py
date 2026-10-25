@@ -3,9 +3,9 @@ __paths__ = ["src/Webhooks.API/**"]
 __depends_on__ = ["eShop.ServiceDefaults", "EventBus"]
 
 class WebhookType(Enum):
-    CatalogItemPriceChange = ...
-    OrderShipped = ...
-    OrderPaid = ...
+    CatalogItemPriceChange = 1
+    OrderShipped = 2
+    OrderPaid = 3
 
 class IGrantUrlTesterService(Protocol):
     def TestGrantUrl(self, urlHook: string, url: string, token: string) -> Task[bool]: ...
@@ -31,9 +31,9 @@ class OrderStatusChangedToPaidIntegrationEventHandler(IIntegrationEventHandler[O
 
 @record
 class OrderStatusChangedToShippedIntegrationEvent(IntegrationEvent):
-    BuyerName: Readonly[string]
     OrderId: Readonly[int]
     OrderStatus: Readonly[string]
+    BuyerName: Readonly[string]
 
 class OrderStatusChangedToShippedIntegrationEventHandler(IIntegrationEventHandler[OrderStatusChangedToShippedIntegrationEvent]):
     def Handle(self, event: OrderStatusChangedToShippedIntegrationEvent) -> Task: ...
@@ -45,9 +45,9 @@ class OrderStockItem:
 
 @record
 class ProductPriceChangedIntegrationEvent(IntegrationEvent):
+    ProductId: Readonly[int]
     NewPrice: Readonly[decimal]
     OldPrice: Readonly[decimal]
-    ProductId: Readonly[int]
 
 class ProductPriceChangedIntegrationEventHandler(IIntegrationEventHandler[ProductPriceChangedIntegrationEvent]):
     def Handle(self, event: ProductPriceChangedIntegrationEvent) -> Task: ...

@@ -31,32 +31,32 @@ class IProductImageUrlProvider(Protocol):
 
 @record
 class CatalogBrand:
-    Brand: Readonly[string]
     Id: Readonly[int]
+    Brand: Readonly[string]
 
 @record
 class CatalogFacetCount:
-    Count: Readonly[int]
     Id: Readonly[int]
+    Count: Readonly[int]
 
 @record
 class CatalogFacets:
     BrandCounts: Readonly[IReadOnlyList[CatalogFacetCount]]
-    BrandTotal: Readonly[int]
     TypeCounts: Readonly[IReadOnlyList[CatalogFacetCount]]
+    BrandTotal: Readonly[int]
     TypeTotal: Readonly[int]
 
 @record
 class CatalogItem:
-    CatalogBrand: Readonly[CatalogBrand]
-    CatalogBrandId: Readonly[int]
-    CatalogType: Readonly[CatalogItemType]
-    CatalogTypeId: Readonly[int]
-    Description: Readonly[string]
     Id: Readonly[int]
     Name: Readonly[string]
-    PictureUrl: Readonly[string]
+    Description: Readonly[string]
     Price: Readonly[decimal]
+    PictureUrl: Readonly[string]
+    CatalogBrandId: Readonly[int]
+    CatalogBrand: Readonly[CatalogBrand]
+    CatalogTypeId: Readonly[int]
+    CatalogType: Readonly[CatalogItemType]
 
 @record
 class CatalogItemType:
@@ -65,10 +65,10 @@ class CatalogItemType:
 
 @record
 class CatalogResult:
-    Count: Readonly[int]
-    Data: Readonly[List[CatalogItem]]
     PageIndex: Readonly[int]
     PageSize: Readonly[int]
+    Count: Readonly[int]
+    Data: Readonly[List[CatalogItem]]
 
 class CatalogService(ICatalogService):
     def GetBrands(self) -> Task[IEnumerable[CatalogBrand]]: ...

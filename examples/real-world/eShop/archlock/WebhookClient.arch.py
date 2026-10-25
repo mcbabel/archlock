@@ -3,9 +3,9 @@ __paths__ = ["src/WebhookClient/**"]
 __depends_on__ = ["eShop.ServiceDefaults"]
 
 class WebhookType(Enum):
-    CatalogItemPriceChange = ...
-    OrderShipped = ...
-    OrderPaid = ...
+    CatalogItemPriceChange = 1
+    OrderShipped = 2
+    OrderPaid = 3
 
 @static
 class AuthenticationEndpoints:

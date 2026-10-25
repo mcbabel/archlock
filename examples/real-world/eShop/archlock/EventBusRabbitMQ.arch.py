@@ -1,6 +1,6 @@
 __module__ = "EventBusRabbitMQ"
 __paths__ = ["src/EventBusRabbitMQ/**"]
-__depends_on__ = ["EventBus"]
+__depends_on__ = ["EventBus", "Shared"]
 
 class EventBusOptions:
     RetryCount: int

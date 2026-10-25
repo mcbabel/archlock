@@ -61,20 +61,20 @@ class ChatState:
 
 @record
 class CreateOrderRequest:
-    Buyer: Readonly[string]
-    CardExpiration: Readonly[DateTime]
-    CardHolderName: Readonly[string]
-    CardNumber: Readonly[string]
-    CardSecurityNumber: Readonly[string]
-    CardTypeId: Readonly[int]
-    City: Readonly[string]
-    Country: Readonly[string]
-    Items: Readonly[List[BasketItem]]
-    State: Readonly[string]
-    Street: Readonly[string]
     UserId: Readonly[string]
     UserName: Readonly[string]
+    City: Readonly[string]
+    Street: Readonly[string]
+    State: Readonly[string]
+    Country: Readonly[string]
     ZipCode: Readonly[string]
+    CardNumber: Readonly[string]
+    CardHolderName: Readonly[string]
+    CardExpiration: Readonly[DateTime]
+    CardSecurityNumber: Readonly[string]
+    CardTypeId: Readonly[int]
+    Buyer: Readonly[string]
+    Items: Readonly[List[BasketItem]]
 
 @static
 class Extensions:
@@ -107,8 +107,8 @@ class OrderingService:
 
 @record
 class OrderRecord:
-    Date: Readonly[DateTime]
     OrderNumber: Readonly[int]
+    Date: Readonly[DateTime]
     Status: Readonly[string]
     Total: Readonly[decimal]
 

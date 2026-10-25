@@ -53,6 +53,11 @@ contribution.
    - `declarations`: `ArchSymbol`s from `src/core/model.ts` (functions with `Signature`s,
      classes/structs with fields and methods, interfaces, type aliases, enums, constants).
      Types are **not translated**: pass the source text through `canonicalType()`.
+     Use the shared notation for what the model already knows: a receiver that is not the
+     language's usual one in `Signature.receiver`, call-relevant modifiers (`throws`, `unsafe`,
+     build variants) in `Signature.decorators`, enum values as Python literals in
+     `EnumMember.value`, and `positionalFirst()` for classes whose fields are constructor
+     parameters.
    Look at `src/extract/go/file.ts` for a compact example with a tree-sitter grammar, or
    `src/extract/python/file.ts`. Formats that embed a language
    (Vue, Svelte, Astro) can reuse its extractor: `src/extract/components/` blanks everything

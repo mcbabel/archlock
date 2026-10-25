@@ -6,7 +6,7 @@ This folder is the architecture lockfile of this repository, maintained with [ar
 Each `*.arch.py` file sketches one module: which files belong to it, which modules it may depend on,
 and its public API. CI runs `archlock check`, so every architecture change is visible and deliberate.
 
-**19,546 lines of code → 3,428 lines of architecture (5.7×)**
+**19,546 lines of code → 3,432 lines of architecture (5.7×)**
 
 ```mermaid
 graph LR
@@ -16,6 +16,7 @@ graph LR
   Catalog_API["Catalog.API"] --> EventBus
   Catalog_API["Catalog.API"] --> IntegrationEventLogEF
   EventBusRabbitMQ --> EventBus
+  EventBusRabbitMQ --> Shared
   HybridApp --> WebAppComponents
   Identity_API["Identity.API"] --> eShop_ServiceDefaults["eShop.ServiceDefaults"]
   Identity_API["Identity.API"] --> Shared
@@ -29,6 +30,7 @@ graph LR
   Ordering_Infrastructure["Ordering.Infrastructure"] --> Ordering_Domain["Ordering.Domain"]
   OrderProcessor --> eShop_ServiceDefaults["eShop.ServiceDefaults"]
   OrderProcessor --> EventBus
+  OrderProcessor --> EventBusRabbitMQ
   PaymentProcessor --> eShop_ServiceDefaults["eShop.ServiceDefaults"]
   PaymentProcessor --> EventBus
   WebApp --> eShop_ServiceDefaults["eShop.ServiceDefaults"]
@@ -49,14 +51,14 @@ graph LR
 | [eShop.AppHost](./eShop.AppHost.arch.py) | – | 0 | – |
 | [eShop.ServiceDefaults](./eShop.ServiceDefaults.arch.py) | – | 5 | – |
 | [EventBus](./EventBus.arch.py) | – | 7 | – |
-| [EventBusRabbitMQ](./EventBusRabbitMQ.arch.py) | – | 4 | EventBus |
+| [EventBusRabbitMQ](./EventBusRabbitMQ.arch.py) | – | 4 | EventBus, Shared |
 | [HybridApp](./HybridApp.arch.py) | – | 13 | WebAppComponents |
 | [Identity.API](./Identity.API.arch.py) | – | 60 | eShop.ServiceDefaults, Shared |
 | [IntegrationEventLogEF](./IntegrationEventLogEF.arch.py) | – | 6 | EventBus |
 | [Ordering.API](./Ordering.API.arch.py) | – | 79 | eShop.ServiceDefaults, EventBus, IntegrationEventLogEF, Ordering.Domain, Ordering.Infrastructure |
 | [Ordering.Domain](./Ordering.Domain.arch.py) | – | 22 | – |
 | [Ordering.Infrastructure](./Ordering.Infrastructure.arch.py) | – | 10 | IntegrationEventLogEF, Ordering.Domain |
-| [OrderProcessor](./OrderProcessor.arch.py) | – | 5 | eShop.ServiceDefaults, EventBus |
+| [OrderProcessor](./OrderProcessor.arch.py) | – | 5 | eShop.ServiceDefaults, EventBus, EventBusRabbitMQ |
 | [PaymentProcessor](./PaymentProcessor.arch.py) | – | 5 | eShop.ServiceDefaults, EventBus |
 | [Shared](./Shared.arch.py) | – | 1 | – |
 | [WebApp](./WebApp.arch.py) | – | 29 | eShop.ServiceDefaults, EventBus, WebAppComponents |
