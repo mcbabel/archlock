@@ -20,6 +20,7 @@ import {
   type Member,
   type MethodMember,
   type Param,
+  positionalFirst,
   type Signature,
 } from "../../core/model.js";
 import { countLines } from "../../fs/files.js";
@@ -36,6 +37,36 @@ const TYPE_DECLARATIONS = new Set([
 ]);
 
 const ACCESS = new Set(["public", "private", "protected", "internal", "file"]);
+
+const BINARY_OPERATORS: Record<string, string> = {
+  "+": "__add__",
+  "-": "__sub__",
+  "*": "__mul__",
+  "/": "__truediv__",
+  "%": "__mod__",
+  "&": "__and__",
+  "|": "__or__",
+  "^": "__xor__",
+  "<<": "__lshift__",
+  ">>": "__rshift__",
+  "==": "__eq__",
+  "!=": "__ne__",
+  "<": "__lt__",
+  ">": "__gt__",
+  "<=": "__le__",
+  ">=": "__ge__",
+};
+
+const UNARY_OPERATORS: Record<string, string> = {
+  "+": "__pos__",
+  "-": "__neg__",
+  "!": "__not__",
+  "~": "__invert__",
+  "++": "__increment__",
+  "--": "__decrement__",
+  true: "__true__",
+  false: "__false__",
+};
 
 function named(node: Node): Node[] {
   return node.namedChildren.filter((c): c is Node => c !== null && c.type !== "comment");
@@ -159,7 +190,14 @@ export function extractCSharpFile(parser: Parser, path: string, text: string): F
 
 class CSharpFileExtractor {
   private readonly facts: FileFacts;
-  private readonly cs: CSharpFacts = { namespaces: [], usings: [], types: [], refs: [] };
+  private readonly cs: CSharpFacts = {
+    namespaces: [],
+    usings: [],
+    types: [],
+    refs: [],
+    calls: [],
+    extensions: [],
+  };
 
   constructor(private readonly path: string) {
     this.facts = {
@@ -262,6 +300,18 @@ class CSharpFileExtractor {
       const m = modifiers(n);
       return m.has("public") || (inInterface && ![...m].some((x) => ACCESS.has(x)));
     };
+    // Extension methods (also internal ones) can be called from anywhere their namespace is used.
+    if (mods.has("static")) {
+      for (const m of body ? named(body) : []) {
+        const first =
+          m.type === "method_declaration"
+            ? m.childForFieldName("parameters")?.namedChildren.find((c) => c?.type === "parameter")
+            : undefined;
+        if (first && named(first).some((x) => x.type === "modifier" && x.text === "this")) {
+          this.cs.extensions.push({ name: m.childForFieldName("name")?.text ?? "", namespace });
+        }
+      }
+    }
     const nested = body ? named(body).filter((n) => TYPE_DECLARATIONS.has(n.type)) : [];
     for (const n of nested) this.type(n, namespace, `${csName}.`, isPublic && memberVisible(n));
     if (!exported) return;
@@ -289,10 +339,15 @@ class CSharpFileExtractor {
       const members: EnumSymbol["members"] = [];
       for (const m of body ? named(body) : []) {
         if (m.type === "enum_member_declaration") {
-          members.push({
+          const member: EnumSymbol["members"][number] = {
             name: toSketchName(m.childForFieldName("name")?.text ?? ""),
             soft: emptySoft(),
-          });
+          };
+          const value = m.childForFieldName("value")?.text.replace(/\s+/g, "");
+          if (value && /^-?(0x[0-9a-fA-F_]+|0b[01_]+|[0-9][0-9_]*)$/i.test(value)) {
+            member.value = value.replace(/_/g, "");
+          }
+          members.push(member);
         }
       }
       this.declare(exported, {
@@ -332,11 +387,14 @@ class CSharpFileExtractor {
     };
     const isRecord =
       decl.type === "record_declaration" || decl.type === "record_struct_declaration";
+    const positional: string[] = [];
     if (isRecord) {
       // Positional records: the parameters are public init-only properties.
       const list = named(decl).find((c) => c.type === "parameter_list") ?? null;
-      for (const p of params(list))
+      for (const p of params(list)) {
         members.push(this.field(p.name, p.type ?? "var", decl, false, true));
+        positional.push(p.name);
+      }
     }
     for (const m of body ? named(body) : []) {
       if (TYPE_DECLARATIONS.has(m.type) || !memberVisible(m)) continue;
@@ -399,6 +457,19 @@ class CSharpFileExtractor {
         case "constructor_declaration":
           if (!mm.has("static")) addMethod("__init__", m, true);
           break;
+        case "operator_declaration": {
+          // Operators are static methods with Python's operator names: `operator +` → `__add__`.
+          const op = /\boperator\s*([^\s(]+)\s*\(/.exec(m.text)?.[1] ?? "";
+          const unary =
+            (m.childForFieldName("parameters")?.namedChildren.filter((c) => c?.type === "parameter")
+              .length ?? 0) === 1;
+          const name = (unary ? UNARY_OPERATORS : BINARY_OPERATORS)[op];
+          if (name) addMethod(name, m, false);
+          break;
+        }
+        case "conversion_operator_declaration":
+          addMethod(/\bimplicit\b/.test(m.text) ? "__implicit__" : "__explicit__", m, false);
+          break;
         default:
           break;
       }
@@ -423,6 +494,7 @@ class CSharpFileExtractor {
       soft: emptySoft(),
       loc,
     };
+    if (isRecord) positionalFirst(sym, positional);
     this.declare(exported, sym);
   }
 
@@ -452,6 +524,7 @@ class CSharpFileExtractor {
    */
   private references(root: Node): void {
     const seen = new Set<string>();
+    const calls = new Set<string>();
     const add = (name: string, node: Node) => {
       const clean = name.replace(/<[\s\S]*?>/g, "").replace(/\s+/g, "");
       if (!/^@?[A-Z]/.test(clean) || seen.has(clean)) return;
@@ -480,6 +553,17 @@ class CSharpFileExtractor {
         if (c.type === "qualified_name") {
           add(c.text, c);
           continue;
+        }
+        if (c.type === "invocation_expression") {
+          const fn = c.childForFieldName("function");
+          const member =
+            fn?.type === "member_access_expression" ? fn.childForFieldName("name") : null;
+          const name = member?.type === "generic_name" ? named(member)[0] : member;
+          if (name && /^[A-Z]/.test(name.text) && !calls.has(name.text)) {
+            calls.add(name.text);
+            const loc = this.loc(name);
+            this.cs.calls.push({ name: name.text, line: loc.line, column: loc.column });
+          }
         }
         if (c.type === "member_access_expression") {
           const text = chain(c);

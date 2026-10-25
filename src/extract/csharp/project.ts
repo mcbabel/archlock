@@ -130,6 +130,16 @@ export function linkCSharp(facts: FileFacts[], projects: CsProject[]): void {
       ...ok.filter((file) => projectOf(file) !== own),
     ];
   };
+  // Extension methods by name, with the namespace that has to be in scope.
+  const extensions = new Map<string, { file: string; namespace: string }[]>();
+  for (const f of files) {
+    for (const e of f.csharp?.extensions ?? []) {
+      extensions.set(e.name, [
+        ...(extensions.get(e.name) ?? []),
+        { file: f.path, namespace: e.namespace },
+      ]);
+    }
+  }
   const globalUsings = new Map<string | null, Set<string>>();
   for (const f of files) {
     for (const u of f.csharp?.usings ?? []) {
@@ -203,6 +213,20 @@ export function linkCSharp(facts: FileFacts[], projects: CsProject[]): void {
           add(`file:${file}`, ref);
         }
         break;
+      }
+    }
+    // `services.AddEventBus()`: an extension method whose namespace is in scope, as the
+    // compiler picks it (also framework namespaces that a project extends).
+    const inScope = new Set([...scopes, ...usings]);
+    for (const call of cs.calls ?? []) {
+      const candidates = (extensions.get(call.name) ?? []).filter((e) => inScope.has(e.namespace));
+      const file = seenFrom(
+        f.path,
+        candidates.map((e) => e.file),
+      )[0];
+      if (file && !targets.has(file)) {
+        targets.add(file);
+        add(`file:${file}`, call);
       }
     }
     f.imports = imports;

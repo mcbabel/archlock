@@ -109,13 +109,31 @@ function typeParams(node: Node): string[] {
 }
 
 /** Parameters without `self`; patterns other than a name (`(a, b): (u8, u8)`) are `_1`, `_2`, …. */
-function params(node: Node): { params: Param[]; self: boolean } {
+/**
+ * The receiver when it is not the usual `&self`: `&mut self` → `&mut Self`, `self` → `Self`,
+ * `self: Box<Self>` → `Box[Self]`. The binding's own `mut` (`mut self`) is no part of it.
+ */
+function receiverOf(p: Node): string | undefined {
+  if (p.type === "parameter") {
+    const type = p.childForFieldName("type");
+    return type ? typeText(type) : undefined;
+  }
+  const text = p.text.replace(/\s+/g, " ").trim();
+  if (text === "&self") return undefined;
+  const t = text.replace(/^mut\s+self$/, "self").replace(/\bself$/, "Self");
+  return canonicalType(t);
+}
+
+function params(node: Node): { params: Param[]; self: boolean; receiver?: string } {
   const list = node.childForFieldName("parameters");
   const out: Param[] = [];
   let self = false;
+  let receiver: string | undefined;
   for (const p of list ? named(list) : []) {
-    if (p.type === "self_parameter") {
+    const isTypedSelf = p.type === "parameter" && p.childForFieldName("pattern")?.text === "self";
+    if (p.type === "self_parameter" || isTypedSelf) {
       self = true;
+      receiver = receiverOf(p);
       continue;
     }
     if (p.type === "variadic_parameter") continue;
@@ -132,22 +150,44 @@ function params(node: Node): { params: Param[]; self: boolean } {
       optional: false,
     });
   }
-  return { params: out, self };
+  return receiver === undefined ? { params: out, self } : { params: out, self, receiver };
+}
+
+/** `unsafe fn`, `const fn` and `extern "C" fn` as decorators: `unsafe`, `const`, `extern("C")`. */
+function modifierDecorators(modifiers: Node | undefined): string[] {
+  if (!modifiers) return [];
+  const text = modifiers.text;
+  const out: string[] = [];
+  if (/\bconst\b/.test(text)) out.push("const");
+  if (/\bunsafe\b/.test(text)) out.push("unsafe");
+  const ext = /\bextern\s*("[^"]*")?/.exec(text);
+  if (ext) out.push(ext[1] ? canonicalType(`extern(${ext[1]})`) : "extern");
+  return out;
 }
 
 function signature(node: Node): { sig: Signature; self: boolean } {
-  const { params: ps, self } = params(node);
+  const { params: ps, self, receiver } = params(node);
   const ret = node.childForFieldName("return_type");
   const modifiers = named(node).find((c) => c.type === "function_modifiers");
-  return {
-    sig: {
-      typeParams: typeParams(node),
-      params: ps,
-      returns: ret ? typeText(ret) : null,
-      async: modifiers ? /\basync\b/.test(modifiers.text) : false,
-    },
-    self,
+  const sig: Signature = {
+    typeParams: typeParams(node),
+    params: ps,
+    returns: ret ? typeText(ret) : null,
+    async: modifiers ? /\basync\b/.test(modifiers.text) : false,
   };
+  if (receiver !== undefined) sig.receiver = receiver;
+  const decorators = modifierDecorators(modifiers);
+  if (decorators.length > 0) sig.decorators = decorators;
+  return { sig, self };
+}
+
+/** `#[cfg(unix)]` → `cfg(unix)`, for telling variants apart. */
+function cfgDecorator(attrs: Node[]): string | null {
+  for (const a of attrs) {
+    const m = /^#\[\s*(cfg\s*\([\s\S]*\))\s*\]$/.exec(a.text);
+    if (m) return canonicalType(m[1] as string);
+  }
+  return null;
 }
 
 /** Use tree → leaves: `a::{b as c, d::*}` → `a::b` (alias c), `a::d::*`. */
@@ -204,6 +244,8 @@ class RustFileExtractor {
   /** Names bound in this file by `use`: inline paths starting with them add nothing new. */
   private readonly bound = new Set<string>();
 
+  /** The `#[cfg]` of a function's first definition, for marking its variants. */
+  private readonly cfgOf = new Map<ArchSymbol, string>();
   /** Nesting depth of macro bodies being read as items. */
   private macroDepth = 0;
 
@@ -366,15 +408,36 @@ class RustFileExtractor {
   private item(item: Node, name: string, attrs: Node[]): void {
     const loc = this.loc(item);
     switch (item.type) {
-      case "function_item":
-        this.declare(name, {
+      case "function_item": {
+        const sig = signature(item).sig;
+        const cfg = cfgDecorator(attrs);
+        const existing = this.facts.declarations.get(name)?.[0];
+        if (existing?.kind === "function") {
+          // `#[cfg]` variants with different signatures are all listed, marked with their cfg.
+          const key = (s: Signature) =>
+            JSON.stringify([s.typeParams, s.params, s.returns, s.receiver ?? null]);
+          if (!existing.signatures.some((s) => key(s) === key(sig))) {
+            const firstCfg = this.cfgOf.get(existing);
+            for (const s of existing.signatures) {
+              if (firstCfg && !s.decorators?.includes(firstCfg))
+                s.decorators = [...(s.decorators ?? []), firstCfg];
+            }
+            if (cfg) sig.decorators = [...(sig.decorators ?? []), cfg];
+            existing.signatures.push(sig);
+          }
+          break;
+        }
+        const fn: ArchSymbol = {
           kind: "function",
           name,
-          signatures: [signature(item).sig],
+          signatures: [sig],
           soft: emptySoft(),
           loc,
-        });
+        };
+        if (cfg) this.cfgOf.set(fn, cfg);
+        this.declare(name, fn);
         break;
+      }
       case "struct_item":
       case "union_item":
         this.declare(name, this.struct(item, name, attrs));
@@ -466,6 +529,11 @@ class RustFileExtractor {
       const data = v.childForFieldName("body");
       const m: EnumSymbol["members"][number] = { name: toSketchName(vname), soft: emptySoft() };
       if (data) m.payload = typeText(data);
+      // An explicit discriminant (`Big = 10`) is the member's value.
+      const value = v.childForFieldName("value");
+      if (value && /^-?\s*(0x[0-9a-fA-F_]+|0o[0-7_]+|0b[01_]+|[0-9][0-9_]*)$/.test(value.text)) {
+        m.value = value.text.replace(/\s+|_/g, "");
+      }
       members.push(m);
     }
     return {

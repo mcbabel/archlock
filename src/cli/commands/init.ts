@@ -52,6 +52,7 @@ export interface InitOptions {
   force?: boolean;
   agents?: boolean;
   withSummaries?: boolean;
+  typed?: boolean;
 }
 
 /** `--agents`: append the archlock section to AGENTS.md and CLAUDE.md (never rewriting them). */
@@ -124,6 +125,7 @@ export async function runInitCommand(ctx: Context, opts: InitOptions): Promise<n
       if (previous) {
         config.rules = previous.rules;
         config.agent = previous.agent;
+        config.typed = previous.typed;
       }
     } catch {
       // An invalid config is replaced.
@@ -167,6 +169,7 @@ export async function runInitCommand(ctx: Context, opts: InitOptions): Promise<n
 
   config.languages = languages;
   config.include = detection.include;
+  if (opts.typed) config.typed = true;
   // The code decides the entries (an empty __init__.py is not one); sketches then name them.
   const { project } = await extractProject(
     root,
@@ -319,6 +322,10 @@ export function registerInit(
     .option("-y, --yes", "do not ask for confirmation")
     .option("--force", "overwrite an existing setup (loses comments in existing sketches)")
     .option("--agents", "add instructions for coding agents to AGENTS.md and CLAUDE.md")
+    .option(
+      "--typed",
+      "let the TypeScript type checker fill in types the code leaves out (slower; stored in the config)",
+    )
     .option(
       "--with-summaries",
       "let your coding agent suggest docstrings and invariants (as # suggested: comments)",

@@ -72,6 +72,8 @@ class A(Base, IDisposable):
     def __init__(self): ...
     @overload
     def __init__(self, name: string, *sizes: 'int[]'): ...
+    @staticmethod
+    def __add__(a: A, b: A) -> A: ...
     def __getitem__(self, index: int) -> int: ...
     def Dispose(self) -> void: ...
     @staticmethod
@@ -109,7 +111,7 @@ public enum Status : byte { New, Paid = 2 }
 public delegate T Factory<T>(string name) where T : class;`),
     ).toBe(`class Status(byte, Enum):
     New = ...
-    Paid = ...
+    Paid = 2
 
 Factory: TypeAlias['T: class'] = 'delegate T(string name)'
 
@@ -122,8 +124,8 @@ class Ext:
 @sealed
 class Invoice:
     Id: Readonly[string]
-    Paid: Readonly[bool]
     Total: Readonly[Money]
+    Paid: Readonly[bool]
 
 @readonly
 @record
@@ -249,5 +251,28 @@ public class Service
     expect(imports("b/Uses.cs")).toEqual(["file:b/Extensions.cs"]);
     // Project d does not reference c: c's types are not visible to it.
     expect(imports("d/Uses.cs")).toEqual([]);
+  });
+
+  it("an extension method call leads to its file when its namespace is in scope", async () => {
+    const facts = await linked(
+      {
+        "core/Text.cs":
+          "namespace Shop.Text;\npublic static class TextExtensions { public static string Slug(this string s) => s; }\n",
+        "core/Other.cs":
+          "namespace Shop.Other;\npublic static class OtherExtensions { public static int Slug(this int i) => i; }\n",
+        "app/Page.cs":
+          "using Shop.Text;\nnamespace App;\npublic class Page { string T(string s) => s.Slug(); }\n",
+        "app/Plain.cs": "namespace App;\npublic class Plain { string T(string s) => s.Slug(); }\n",
+      },
+      [
+        { dir: "core", refs: [] },
+        { dir: "app", refs: ["core"] },
+      ],
+    );
+    const imports = (path: string) =>
+      facts.find((f) => f.path === path)?.imports.map((i) => i.specifier);
+    // Only the namespace the file imports is searched, not every `Slug` in the solution.
+    expect(imports("app/Page.cs")).toEqual(["file:core/Text.cs"]);
+    expect(imports("app/Plain.cs")).toEqual([]);
   });
 });

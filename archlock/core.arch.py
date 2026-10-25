@@ -33,6 +33,7 @@ class ClassLikeSymbol(SymbolBase, Protocol):
     decorators: 'string[]'
     kind: '"class" | "interface"'
     members: 'Member[]'
+    positional: Opt[number]
     typeParams: 'string[]'
 
 class ConstSymbol(SymbolBase, Protocol):
@@ -43,6 +44,7 @@ class EnumMember(Protocol):
     name: string
     payload: Opt[string]
     soft: Soft
+    value: Opt[string]
 
 class EnumSymbol(SymbolBase, Protocol):
     bases: 'string[]'
@@ -80,11 +82,13 @@ class LostComment(Protocol):
 
 class MergeOptions(Protocol):
     deps: boolean
+    shape: Opt[Shapes]
     symbols: boolean
 
 class MergeResult(Protocol):
     lost: 'LostComment[]'
     module: ArchModule
+    moved: 'MovedComment[]'
 
 class MethodMember(Protocol):
     abstract: boolean
@@ -104,6 +108,11 @@ class ModuleSoft(Protocol):
     fileTrailing: 'string[]'
     header: Partial[Record[HeaderKey, HeaderSoft]]
 
+class MovedComment(Protocol):
+    self["from"]: string
+    module: string
+    to: string
+
 class Param(Protocol):
     kind: ParamKind
     name: string
@@ -115,9 +124,15 @@ class ReExport(Protocol):
     leading: 'string[]'
     names: 'string[]'
 
+class Shapes(Protocol):
+    def member(self, m: Member) -> string: ...
+    def symbol(self, s: ArchSymbol) -> string: ...
+
 class Signature(Protocol):
     self["async"]: boolean
+    decorators: Opt['string[]']
     params: 'Param[]'
+    receiver: Opt[string]
     returns: string | null
     typeParams: 'string[]'
 
@@ -155,6 +170,7 @@ def mergeModule(
     options: MergeOptions,
 ) -> MergeResult: ...
 
+def positionalFirst(sym: ClassLikeSymbol, names: 'string[]') -> void: ...
 def pythonString(text: string, prefer: '"\'" | \'"\'' = ...) -> string: ...
 def renderType(canonical: string) -> string: ...
 def toSketchName(name: string) -> string: ...

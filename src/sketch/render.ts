@@ -9,6 +9,7 @@ import {
   type ArchSymbol,
   type ClassLikeSymbol,
   compareNames,
+  type EnumMember,
   type EnumSymbol,
   type FieldMember,
   type FunctionSymbol,
@@ -198,13 +199,24 @@ function renderEnum(sym: EnumSymbol, indent: string): string[] {
   const lines: string[] = [];
   for (const m of sym.members) {
     lines.push(...indented(m.soft.leading, inner));
-    const value = m.payload === undefined ? "..." : pythonString(m.payload);
-    lines.push(withTrailing(`${inner}${m.name} = ${value}`, m.soft.trailing));
+    lines.push(withTrailing(`${inner}${enumMemberLine(m)}`, m.soft.trailing));
   }
   for (const m of sortMembers(sym.methods ?? [])) {
     if (m.kind === "method") lines.push(...renderMethod(m, inner));
   }
   return classBody(indent, `${indent}class ${sym.name}(${bases}):`, sym.soft, lines, []);
+}
+
+/** `Point = ...`, `Paid = 2`, `Circle: '{ radius: f64 }'`. */
+export function enumMemberLine(m: EnumMember): string {
+  const annotation = m.payload === undefined ? "" : `: ${renderType(m.payload)}`;
+  if (m.value !== undefined) return `${m.name}${annotation} = ${m.value}`;
+  return m.payload === undefined ? `${m.name} = ...` : `${m.name}${annotation}`;
+}
+
+/** Fields whose order is the constructor's order: dataclasses and records. */
+export function hasPositionalFields(sym: ClassLikeSymbol): boolean {
+  return sym.decorators.some((d) => /^(record|dataclass)\b|\.dataclass\b/.test(d));
 }
 
 function renderClass(sym: ClassLikeSymbol, indent: string): string[] {
@@ -214,7 +226,7 @@ function renderClass(sym: ClassLikeSymbol, indent: string): string[] {
   const tp = sym.typeParams.length > 0 ? `[${sym.typeParams.map(renderTypeParam).join(", ")}]` : "";
   const header = `${indent}class ${sym.name}${tp}${bases.length > 0 ? `(${bases.join(", ")})` : ""}:`;
   const decorators = [...sym.decorators].sort(compareNames).map((d) => `${indent}@${d}`);
-  const members = sortMembers(sym.members);
+  const members = sortMembers(sym.members, hasPositionalFields(sym));
   const lines: string[] = [];
   for (const m of members) {
     if (m.kind === "field") lines.push(...renderField(m, inner));
@@ -223,10 +235,17 @@ function renderClass(sym: ClassLikeSymbol, indent: string): string[] {
   return classBody(indent, header, sym.soft, lines, decorators);
 }
 
-/** Fields first (alphabetical), then methods: `__init__` first, then alphabetical. */
-export function sortMembers(members: Member[]): Member[] {
+/**
+ * Fields first (alphabetical, or in source order for dataclasses and records), then methods:
+ * `__init__` first, then alphabetical.
+ */
+export function sortMembers(members: Member[], positional = false): Member[] {
   const rank = (m: Member) => (m.kind === "field" ? 0 : m.name === "__init__" ? 1 : 2);
-  return [...members].sort((a, b) => rank(a) - rank(b) || compareNames(a.name, b.name));
+  return [...members].sort(
+    (a, b) =>
+      rank(a) - rank(b) ||
+      (positional && a.kind === "field" && b.kind === "field" ? 0 : compareNames(a.name, b.name)),
+  );
 }
 
 /**
@@ -277,6 +296,7 @@ function renderDefs(
   const overloaded = signatures.length > 1;
   signatures.forEach((sig, i) => {
     for (const d of decorators) out.push(`${indent}@${d}`);
+    for (const d of sig.decorators ?? []) out.push(`${indent}@${d}`);
     if (overloaded) out.push(`${indent}@overload`);
     const header = renderDefHeader(name, sig, indent, self);
     // Docstring, body comments and the trailing comment belong to the first signature.
@@ -317,7 +337,8 @@ function renderDefHeader(
   self: string | null,
 ): string {
   const params = sig.params.map(renderParam);
-  if (self !== null) params.unshift(self);
+  if (self !== null)
+    params.unshift(sig.receiver === undefined ? self : `${self}: ${renderType(sig.receiver)}`);
   const tp = sig.typeParams.length > 0 ? `[${sig.typeParams.map(renderTypeParam).join(", ")}]` : "";
   const ret = sig.returns === null ? "" : ` -> ${renderType(sig.returns)}`;
   const def = `${indent}${sig.async ? "async " : ""}def ${name}`;
@@ -343,10 +364,13 @@ function renderDefHeader(
 /** One-line summaries used in reports (never wrapped, no trailing `:`). */
 export function defLine(name: string, sig: Signature, self: string | null = null): string {
   const params = sig.params.map(renderParam);
-  if (self !== null) params.unshift(self);
+  if (self !== null) {
+    params.unshift(sig.receiver === undefined ? self : `${self}: ${renderType(sig.receiver)}`);
+  }
   const tp = sig.typeParams.length > 0 ? `[${sig.typeParams.map(renderTypeParam).join(", ")}]` : "";
   const ret = sig.returns === null ? "" : ` -> ${renderType(sig.returns)}`;
-  return `${sig.async ? "async " : ""}def ${name}${tp}(${params.join(", ")})${ret}`;
+  const decorators = (sig.decorators ?? []).map((d) => `@${d} `).join("");
+  return `${decorators}${sig.async ? "async " : ""}def ${name}${tp}(${params.join(", ")})${ret}`;
 }
 
 export function fieldLine(field: FieldMember): string {
@@ -387,6 +411,49 @@ export function symbolLines(sym: ArchSymbol): string[] {
       return [`class ${sym.name}${tp}${bases.length > 0 ? `(${bases.join(", ")})` : ""}`];
     }
   }
+}
+
+/** Removes all comments of a symbol and its members (a copy). */
+function withoutSoft<T extends ArchSymbol | Member>(x: T): T {
+  const copy = structuredClone(x);
+  const clear = (soft: {
+    leading: string[];
+    trailing: string | null;
+    docstring: string | null;
+    body: string[];
+  }) => {
+    soft.leading = [];
+    soft.trailing = null;
+    soft.docstring = null;
+    soft.body = [];
+  };
+  clear(copy.soft);
+  if (copy.kind === "enum") {
+    for (const m of copy.members) clear(m.soft);
+    for (const m of copy.methods ?? []) clear(m.soft);
+  }
+  if (copy.kind === "class" || copy.kind === "interface")
+    for (const m of copy.members) clear(m.soft);
+  return copy;
+}
+
+/** `text` with every whole-word use of `name` replaced by a placeholder. */
+function anonymous(text: string, name: string): string {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(`(?<![\\w.])${escaped}(?![\\w])`, "g"), "\u0000");
+}
+
+/**
+ * A symbol's sketch text without comments and with its own name blanked out (also where the
+ * symbol refers to itself): two symbols with the same shape differ only in their name.
+ */
+export function symbolShape(sym: ArchSymbol): string {
+  return anonymous(renderSymbol(withoutSoft(sym), "").join("\n"), sym.name);
+}
+
+/** The same for a class member. */
+export function memberShape(member: Member): string {
+  return anonymous(memberLines(withoutSoft(member)).join("\n"), member.name);
 }
 
 /** A single symbol as it appears in a sketch (with its comments), for prompts and reports. */

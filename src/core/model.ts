@@ -80,6 +80,18 @@ export interface Signature {
    */
   returns: string | null;
   async: boolean;
+  /**
+   * The receiver when it is not the language's usual one: Go `*T` and Rust `&self` are usual;
+   * a Go value receiver (`T`) or Rust `&mut self` (`&mut Self`) is recorded. Rendered as
+   * `self: T`.
+   */
+  receiver?: string;
+  /**
+   * Modifiers that are part of the contract, as decorator expressions without `@`:
+   * `unsafe`, `const`, `extern("C")`, `throws(IOException)`, and for build variants
+   * `build("linux")` or `cfg(unix)`.
+   */
+  decorators?: string[];
 }
 
 export interface FieldMember {
@@ -112,9 +124,14 @@ export interface EnumMember {
   name: string;
   /**
    * Canonical type of the data a variant carries (Rust: `(u8, u8)`, `{ x: i32 }`); absent for
-   * members without data. Rendered as `Name = '(u8, u8)'`.
+   * members without data. Rendered as an annotation, `Name: '(u8, u8)'`.
    */
   payload?: string;
+  /**
+   * The member's value as a Python literal (`2`, `-1`, `"paid"`), when the code gives one.
+   * Rendered as `Name = 2`; `Name = ...` leaves the value open.
+   */
+  value?: string;
   soft: Soft;
 }
 
@@ -148,6 +165,11 @@ export interface ClassLikeSymbol extends SymbolBase {
   /** Canonical decorator expressions without `@` (classes only, e.g. `dataclass`). */
   decorators: string[];
   members: Member[];
+  /**
+   * Dataclasses and records, code side only: the number of leading fields that are constructor
+   * parameters, in declaration order. Not rendered; the sketch shows the order itself.
+   */
+  positional?: number;
 }
 
 export interface FunctionSymbol extends SymbolBase {
@@ -235,6 +257,22 @@ export interface ArchModel {
 export const INFERRED = "<inferred>";
 /** Type placeholder for overly long types in `--typed` mode. */
 export const COMPLEX = "<complex>";
+
+/**
+ * Puts the constructor fields `names` first, in that order, and sorts the other members by name,
+ * so that only the constructor order depends on the source.
+ */
+export function positionalFirst(sym: ClassLikeSymbol, names: string[]): void {
+  const head = names.flatMap((n) => {
+    const m = sym.members.find((x) => x.kind === "field" && x.name === n);
+    return m ? [m] : [];
+  });
+  const rest = sym.members
+    .filter((m) => !head.includes(m))
+    .sort((a, b) => compareNames(a.name, b.name));
+  sym.members = [...head, ...rest];
+  sym.positional = head.length;
+}
 
 /** Deterministic, locale-independent ordering: case-insensitive first, then exact. */
 export function compareNames(a: string, b: string): number {

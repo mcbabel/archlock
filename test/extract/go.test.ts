@@ -106,6 +106,7 @@ class User('*Base', io.Reader):
 type Number interface { ~int | ~float64 }`),
     ).toBe(`class Number('~int | ~float64', Protocol): ...
 
+@sealed
 class Store(io.Closer, Protocol):
     def Get(self, ctx: context.Context, id: string) -> '(*User, error)': ...`);
   });
@@ -139,12 +140,12 @@ func (u *User) secret() {}`,
     def Swap(self): ...
 
 class Role(int):
-    def Valid(self) -> bool: ...
+    def Valid(self: Role) -> bool: ...
 
 class User:
     Name: string
     def Rename(self, name: string): ...
-    def String(self) -> string: ...`);
+    def String(self: User) -> string: ...`);
   });
 
   it("constants and variables: iota groups repeat their type; evident value types", async () => {
@@ -227,6 +228,24 @@ Zero: Point`);
       ["embed", ["*"], 6, 2],
       ["C", ["*"], 9, 8],
     ]);
+  });
+
+  it("build-constrained variants with different signatures become decorated overloads", async () => {
+    expect(
+      await sketchOf({
+        "m/open_unix.go":
+          "//go:build linux || darwin\n\npackage m\n\nfunc Open(path string) (*File, error) { return nil, nil }\nfunc Same() {}\n",
+        "m/open_windows.go":
+          "package m\n\nfunc Open(path string, share uint32) (*File, error) { return nil, nil }\nfunc Same() {}\n",
+      }),
+    ).toBe(`@build("linux || darwin")
+@overload
+def Open(path: string) -> '(*File, error)': ...
+@build("windows")
+@overload
+def Open(path: string, share: uint32) -> '(*File, error)': ...
+
+def Same(): ...`);
   });
 });
 

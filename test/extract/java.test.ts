@@ -181,6 +181,22 @@ public class A {
       ["com.acme.billing.Billing", 7],
     ]);
   });
+
+  it("checked exceptions become @throws; record components keep their order", async () => {
+    expect(
+      await one(`public class Io {
+    public String read(String path) throws IOException, InterruptedException { return ""; }
+}
+public record Range(int to, int from) { }`),
+    ).toBe(`class Io:
+    @throws(IOException, InterruptedException)
+    def read(self, path: String) -> String: ...
+
+@record
+class Range:
+    to: Readonly[int]
+    from_: Readonly[int]`);
+  });
 });
 
 describe("Java import resolution", () => {

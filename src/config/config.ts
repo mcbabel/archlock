@@ -34,6 +34,8 @@ export interface ArchlockConfig {
   rules: Record<RuleName, Severity>;
   /** Types longer than this are abbreviated in sketches (opt-in; null = never). */
   maxTypeLength: number | null;
+  /** Opt-in: the TypeScript type checker fills in the types TypeScript and JavaScript code leaves out. */
+  typed: boolean;
   agent: {
     default: AgentName;
     command: string | null;
@@ -48,6 +50,7 @@ export const DEFAULT_EXCLUDE = [
   "**/*.test.*",
   "**/*.spec.*",
   "**/__tests__/**",
+  "**/__mocks__/**",
   "tests/**",
   "**/test_*.py",
   "**/*_test.py",
@@ -77,6 +80,7 @@ export function defaultConfig(): ArchlockConfig {
     exclude: [...DEFAULT_EXCLUDE],
     rules: { ...RULE_DEFAULTS },
     maxTypeLength: null,
+    typed: false,
     agent: { default: "claude", command: null, maxRounds: 3, verifyCommands: [] },
   };
 }
@@ -154,6 +158,7 @@ export function validateConfig(raw: unknown, file: string): ArchlockConfig {
     "exclude",
     "rules",
     "maxTypeLength",
+    "typed",
     "agent",
   ]);
   for (const key of Object.keys(obj)) {
@@ -211,6 +216,10 @@ export function validateConfig(raw: unknown, file: string): ArchlockConfig {
       );
     }
     config.maxTypeLength = n;
+  }
+  if (obj.typed !== undefined) {
+    if (typeof obj.typed !== "boolean") fail(file, "typed", "must be true or false");
+    config.typed = obj.typed;
   }
   if (obj.agent !== undefined) {
     if (typeof obj.agent !== "object" || obj.agent === null || Array.isArray(obj.agent)) {
@@ -283,6 +292,7 @@ export function serializeConfig(config: ArchlockConfig): string {
     ),
     // Omitted when unset so existing configs stay byte-identical.
     ...(config.maxTypeLength !== null ? { maxTypeLength: config.maxTypeLength } : {}),
+    ...(config.typed ? { typed: true } : {}),
     // verifyCommands is omitted when unset, for the same reason.
     agent: {
       default: config.agent.default,

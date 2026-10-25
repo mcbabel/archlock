@@ -11,7 +11,7 @@ const cart = useCart();
   <section>
     <h2>{{ title }}</h2>
     <PriceTag :value="cart.total()" />
-    <!-- Auto-imported components like <NuxtLink> are invisible to archlock. -->
+    <!-- <NuxtLink> belongs to Nuxt: no file of this repository, no dependency. -->
     <NuxtLink to="/checkout">Checkout</NuxtLink>
   </section>
 </template>

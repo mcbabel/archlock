@@ -80,7 +80,7 @@ describe("push prompt golden files", () => {
   it("Rust: a planned enum variant and method", async () => {
     const dir = copyFixture("rust-crate");
     await archlock(dir, "init", "--yes");
-    edit(dir, "archlock/lexer.arch.py", "    Newline = ...", "    Newline = ...\n    Tab = '(u8)'");
+    edit(dir, "archlock/lexer.arch.py", "    Newline = ...", "    Newline = ...\n    Tab: '(u8)'");
     edit(
       dir,
       "archlock/lexer.arch.py",
@@ -102,8 +102,8 @@ describe("push prompt golden files", () => {
     edit(
       dir,
       "archlock/order.arch.py",
-      "    def place(self, order: Order) -> Invoice: ...",
-      "    def cancel(self, order: Order, reason: String) -> boolean: ...\n    def place(self, order: Order) -> Invoice: ...",
+      "    @throws(BillingException)\n    def place(",
+      "    def cancel(self, order: Order, reason: String) -> boolean: ...\n    @throws(BillingException)\n    def place(",
     );
     golden("java-app.prompt.md", await prompt(dir));
   });

@@ -1,13 +1,13 @@
 import * as p from "@clack/prompts";
 import type { Command } from "commander";
-import { type LostComment, mergeModule } from "../../core/merge.js";
+import { type LostComment, type MovedComment, mergeModule } from "../../core/merge.js";
 import { compareNames } from "../../core/model.js";
 import { moduleFromCode } from "../../engine/fromcode.js";
 import { checkWorkspace, openWorkspace } from "../../engine/workspace.js";
 import { plural } from "../../report/format.js";
 import { jsonPayload } from "../../report/json.js";
 import { unifiedDiff } from "../../report/textdiff.js";
-import { renderSketch } from "../../sketch/render.js";
+import { memberShape, renderSketch, symbolShape } from "../../sketch/render.js";
 import { writeText } from "../../sketch/write.js";
 import { CliError, type Context } from "../context.js";
 import { writeSketchReadme } from "./readme.js";
@@ -50,6 +50,7 @@ export async function runAcceptCommand(
   const options = { deps: !opts.symbolsOnly, symbols: !opts.depsOnly };
   const changes: { module: string; file: string; before: string; after: string }[] = [];
   const lost: LostComment[] = [];
+  const moved: MovedComment[] = [];
   const finalModules = [];
   const finalTexts: string[] = [];
   for (const sketch of result.sketches) {
@@ -60,9 +61,13 @@ export async function runAcceptCommand(
       continue;
     }
     const externals = [...code.externals.keys()].sort(compareNames);
-    const merged = mergeModule(sketch.module, moduleFromCode(code), externals, options);
+    const merged = mergeModule(sketch.module, moduleFromCode(code), externals, {
+      ...options,
+      shape: { symbol: symbolShape, member: memberShape },
+    });
     const after = renderSketch(merged.module);
     lost.push(...merged.lost);
+    moved.push(...merged.moved);
     finalModules.push(merged.module);
     finalTexts.push(after);
     if (after !== sketch.text)
@@ -80,7 +85,14 @@ export async function runAcceptCommand(
       result.project.totalLines,
     );
     if (ctx.json)
-      ctx.out(jsonPayload("accept", { changed: [], lostComments: [], readme: readme.changed }));
+      ctx.out(
+        jsonPayload("accept", {
+          changed: [],
+          lostComments: [],
+          movedComments: [],
+          readme: readme.changed,
+        }),
+      );
     else if (!ctx.quiet) {
       ctx.out(`${c.green("✔")} Nothing to accept: the sketches already describe the code.`);
       if (readme.changed) ctx.out(c.dim(`Updated ${readme.file}.`));
@@ -90,6 +102,7 @@ export async function runAcceptCommand(
 
   if (!ctx.json && !ctx.quiet) {
     for (const ch of changes) ctx.out(unifiedDiff(ch.before, ch.after, ch.file, c));
+    if (moved.length > 0) ctx.out(renderMoved(moved, ctx));
     if (lost.length > 0) ctx.out(renderLost(lost, ctx, false));
   }
 
@@ -123,6 +136,7 @@ export async function runAcceptCommand(
       jsonPayload("accept", {
         changed: changes.map((ch) => ({ module: ch.module, file: ch.file })),
         lostComments: lost,
+        movedComments: moved,
       }),
     );
     return 0;
@@ -133,6 +147,14 @@ export async function runAcceptCommand(
     ctx.out(c.dim("Review the diff and commit the sketches together with the code."));
   }
   return 0;
+}
+
+function renderMoved(moved: MovedComment[], ctx: Context): string {
+  const c = ctx.color;
+  return [
+    c.dim("Comments that follow a renamed symbol (same shape, new name):"),
+    ...moved.map((m) => c.dim(`  ${m.module}.${m.from} → ${m.module}.${m.to}`)),
+  ].join("\n");
 }
 
 function renderLost(lost: LostComment[], ctx: Context, written: boolean): string {

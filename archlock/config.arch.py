@@ -15,6 +15,7 @@ class ArchlockConfig(Protocol):
     maxTypeLength: number | null
     rules: Record[RuleName, Severity]
     sketchDir: string
+    typed: boolean
     version: '1'
 
 class LoadedConfig(Protocol):

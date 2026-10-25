@@ -13,7 +13,7 @@ import type { RuleName, Severity } from "../core/rules.js";
 import type { CodeModule, CodeProject, ImportSite } from "../extract/index.js";
 import type { LoadedSketch } from "../sketch/load.js";
 import type { SketchError } from "../sketch/parse.js";
-import { memberLines, symbolLines } from "../sketch/render.js";
+import { enumMemberLine, hasPositionalFields, memberLines, symbolLines } from "../sketch/render.js";
 
 export type ActiveSeverity = Exclude<Severity, "off">;
 
@@ -297,7 +297,14 @@ function kindLabel(sym: ArchSymbol): string {
 }
 
 function sigKey(sig: Signature): string {
-  return JSON.stringify([sig.typeParams, sig.params, sig.returns, sig.async]);
+  return JSON.stringify([
+    sig.typeParams,
+    sig.params,
+    sig.returns,
+    sig.async,
+    sig.receiver ?? null,
+    sig.decorators ?? [],
+  ]);
 }
 
 /** Human-readable differences between two symbols of the same kind; empty when equal. */
@@ -334,8 +341,9 @@ function diffEnum(sketch: EnumSymbol, code: EnumSymbol): string[] {
     out.push(...sketchVsCode(symbolLines(sketch), symbolLines(code)));
   const s = sketch.members.map((m) => m.name);
   const c = code.members.map((m) => m.name);
+  // A member without payload or value is named alone, without the `= ...` placeholder.
   const label = (m: EnumSymbol["members"][number]) =>
-    m.payload === undefined ? m.name : `${m.name} = ${m.payload}`;
+    m.payload === undefined && m.value === undefined ? m.name : enumMemberLine(m);
   for (const m of code.members) {
     if (!s.includes(m.name)) out.push(`+ ${label(m)} (in code, not in sketch)`);
   }
@@ -344,10 +352,11 @@ function diffEnum(sketch: EnumSymbol, code: EnumSymbol): string[] {
   }
   for (const m of sketch.members) {
     const other = code.members.find((x) => x.name === m.name);
-    if (other && other.payload !== m.payload) {
-      out.push(
-        `~ ${m.name}: sketch ${m.payload ?? "(no data)"} · code ${other.payload ?? "(no data)"}`,
-      );
+    if (!other) continue;
+    // `Name = ...` in a sketch leaves the value open; a value it gives must match.
+    const valueDiffers = m.value !== undefined && m.value !== other.value;
+    if (other.payload !== m.payload || valueDiffers) {
+      out.push(`~ sketch: ${enumMemberLine(m)} · code: ${enumMemberLine(other)}`);
     }
   }
   out.push(...diffMembers(sketch.methods ?? [], code.methods ?? []));
@@ -373,6 +382,18 @@ function diffClass(sketch: ClassLikeSymbol, code: ClassLikeSymbol): string[] {
     }
   }
   out.push(...diffMembers(sketch.members, code.members));
+  // Dataclasses and records: the field order is the constructor's parameter order.
+  if (code.positional && hasPositionalFields(sketch)) {
+    const co = code.members
+      .filter((m) => m.kind === "field")
+      .slice(0, code.positional)
+      .map((m) => m.name);
+    const so = sketch.members
+      .filter((m) => m.kind === "field" && co.includes(m.name))
+      .map((m) => m.name);
+    if (so.join() !== co.filter((n) => so.includes(n)).join())
+      out.push(`field order: sketch (${so.join(", ")}) · code (${co.join(", ")})`);
+  }
   return out;
 }
 

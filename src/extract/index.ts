@@ -19,6 +19,7 @@ import {
   getPythonParser,
   getRustParser,
 } from "../sketch/treesitter.js";
+import { linkAutoImports } from "./components/autoimport.js";
 import { extractComponentFile } from "./components/component.js";
 import { frameworkOf } from "./components/sfc.js";
 import { extractCSharpFile } from "./csharp/file.js";
@@ -37,6 +38,7 @@ import { linkRustCrates } from "./rust/crate.js";
 import { extractRustFile } from "./rust/file.js";
 import { extractTypeScriptFile } from "./typescript/file.js";
 import { TypeScriptResolver } from "./typescript/resolve.js";
+import { typedPrograms } from "./typescript/typed.js";
 import { readWorkspacePackages } from "./workspaces.js";
 
 export { readCsProjects } from "./csharp/project.js";
@@ -87,6 +89,14 @@ export async function extractProject(
   const rust = files.some((f) => f.endsWith(".rs")) ? await getRustParser() : null;
   const java = files.some((f) => f.endsWith(".java")) ? await getJavaParser() : null;
   const csharp = files.some((f) => f.endsWith(".cs")) ? await getCSharpParser() : null;
+  // Typed mode: one type checker per tsconfig for the TypeScript and JavaScript files. Their facts
+  // depend on other files then, so they bypass the per-file cache.
+  const typed = config.typed
+    ? typedPrograms(
+        root,
+        files.filter((f) => /\.[cm]?[jt]sx?$/.test(f) && !frameworkOf(f)),
+      )
+    : null;
   const extract = (file: string, text: string): FileFacts => {
     if (python && file.endsWith(".py")) return extractPythonFile(python, file, text);
     if (go && file.endsWith(".go")) return extractGoFile(go, file, text);
@@ -94,11 +104,14 @@ export async function extractProject(
     if (java && file.endsWith(".java")) return extractJavaFile(java, file, text);
     if (csharp && file.endsWith(".cs")) return extractCSharpFile(csharp, file, text);
     if (frameworkOf(file)) return extractComponentFile(file, text);
+    const info = typed?.get(file);
+    if (info) return extractTypeScriptFile(file, text, undefined, info);
     return extractTypeScriptFile(file, text);
   };
   const facts: FileFacts[] = files.map((file) => {
     const text = readFileSync(join(root, file), "utf8");
     const hash = hashText(text);
+    if (typed?.has(file)) return extract(file, text);
     const cached = cache?.get<SerializedFacts>("facts", file, hash);
     if (cached) return deserializeFacts(cached);
     const extracted = extract(file, text);
@@ -106,6 +119,7 @@ export async function extractProject(
     return extracted;
   });
   attachGoMethods(facts);
+  linkAutoImports(root, facts);
   const ownership = new Ownership(specs);
   if (rust) linkRustCrates(root, facts, readCargoCrates(root), (f) => ownership.owner(f));
   if (csharp) linkCSharp(facts, readCsProjects(root));

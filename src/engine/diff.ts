@@ -231,12 +231,16 @@ export function changeSummary(b: ArchSymbol, h: ArchSymbol): string | null {
     case "enum": {
       const bm = (b as typeof h).members.map((m) => m.name);
       const hm = h.members.map((m) => m.name);
-      const base = new Map((b as typeof h).members.map((m) => [m.name, m.payload]));
+      const base = new Map(
+        (b as typeof h).members.map((m) => [m.name, `${m.payload ?? ""}\0${m.value ?? ""}`]),
+      );
       const parts = [
         ...hm.filter((m) => !bm.includes(m)).map((m) => `+ ${m}`),
         ...bm.filter((m) => !hm.includes(m)).map((m) => `- ${m}`),
         ...h.members
-          .filter((m) => base.has(m.name) && base.get(m.name) !== m.payload)
+          .filter(
+            (m) => base.has(m.name) && base.get(m.name) !== `${m.payload ?? ""}\0${m.value ?? ""}`,
+          )
           .map((m) => `~ ${m.name}`),
         ...(methodsKey((b as typeof h).methods) !== methodsKey(h.methods)
           ? ["methods changed"]

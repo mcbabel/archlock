@@ -123,3 +123,33 @@ export function maskOutside(text: string, blocks: ScriptBlock[]): string {
 function blank(s: string): string {
   return s.replace(/[^\n\r]/g, " ");
 }
+
+/**
+ * Component tags of a Vue template, PascalCase (`<user-card>` → `UserCard`), with the
+ * position of their first use. Plain HTML elements have neither capitals nor a hyphen.
+ */
+export function templateTags(
+  text: string,
+  blocks: ScriptBlock[],
+): { name: string; line: number; column: number }[] {
+  const scan = withoutComments(text);
+  const out: { name: string; line: number; column: number }[] = [];
+  const seen = new Set<string>();
+  for (const m of scan.matchAll(/<([A-Z][A-Za-z0-9]*|[a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?=[\s/>])/g)) {
+    const at = m.index;
+    if (blocks.some((b) => at >= b.start && at < b.end)) continue;
+    const raw = m[1] as string;
+    const name = raw.includes("-")
+      ? raw
+          .split("-")
+          .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+          .join("")
+      : raw;
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const before = text.slice(0, at);
+    const line = before.split("\n").length;
+    out.push({ name, line, column: at - before.lastIndexOf("\n") });
+  }
+  return out;
+}

@@ -13,7 +13,14 @@ import type { ArchSymbol, ClassLikeSymbol, Member } from "../../core/model.js";
 import { countLines } from "../../fs/files.js";
 import { ANONYMOUS_DEFAULT, type FileFacts, type ImportFact } from "../facts.js";
 import { extractTypeScriptFile } from "../typescript/file.js";
-import { type Framework, findBlocks, frameworkOf, maskOutside, type ScriptBlock } from "./sfc.js";
+import {
+  type Framework,
+  findBlocks,
+  frameworkOf,
+  maskOutside,
+  type ScriptBlock,
+  templateTags,
+} from "./sfc.js";
 
 const BASE: Record<Framework, string> = {
   vue: "VueComponent",
@@ -36,6 +43,11 @@ export function extractComponentFile(path: string, text: string): FileFacts {
       ? all
       : extractTypeScriptFile(path, maskOutside(text, exporting), kind);
   facts.imports = [...all.imports, ...srcImports(text, blocks)];
+  if (framework === "vue") {
+    // Tags bound by an import of any script block are linked through that import already.
+    const tags = templateTags(text, blocks).filter((t) => !all.bindings.has(t.name));
+    if (tags.length > 0) facts.templateTags = tags;
+  }
   facts.lines = countLines(text);
 
   facts.exports.delete("default");
