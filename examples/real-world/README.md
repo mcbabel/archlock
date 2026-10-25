@@ -8,13 +8,13 @@ code. `regenerate.sh` reproduces everything, including the hand edits, from the 
 | Project | Language | Commit | License | Modules | Public symbols | Code → architecture |
 |---|---|---|---|---|---|---|
 | [Hono](https://github.com/honojs/hono) | TypeScript | [`5ca49b0`](https://github.com/honojs/hono/tree/5ca49b0720755c585c9a9835f0a479ceea36fb52) | MIT | 19 | 571 | 25,971 → 1,790 lines (**15×**) |
-| [Zod](https://github.com/colinhacks/zod) | TypeScript | [`afdac65`](https://github.com/colinhacks/zod/tree/afdac65e0f80c0ccf9e8909da97c411567908b57) | MIT | 13 | 1,932 | 45,221 → 5,824 lines (**7.8×**) |
+| [Zod](https://github.com/colinhacks/zod) | TypeScript | [`afdac65`](https://github.com/colinhacks/zod/tree/afdac65e0f80c0ccf9e8909da97c411567908b57) | MIT | 13 | 1,935 | 45,221 → 5,827 lines (**7.8×**) |
 | [Flask](https://github.com/pallets/flask) | Python | [`d086db8`](https://github.com/pallets/flask/tree/d086db856be187255b8ec61ef409357393020f32) | BSD-3-Clause | 3 | 49 | 7,563 → 542 lines (**14×**) |
-| [shadcn-svelte](https://github.com/huntabyte/shadcn-svelte) | Svelte, TypeScript | [`b10f153`](https://github.com/huntabyte/shadcn-svelte/tree/b10f153250b18abfccf49a06e1c4c68945edffa5) | MIT | 9 | 1,939 | 133,471 → 3,011 lines (**44×**) |
+| [shadcn-svelte](https://github.com/huntabyte/shadcn-svelte) | Svelte, TypeScript | [`b10f153`](https://github.com/huntabyte/shadcn-svelte/tree/b10f153250b18abfccf49a06e1c4c68945edffa5) | MIT | 9 | 1,939 | 133,461 → 3,011 lines (**44×**) |
 | [Gin](https://github.com/gin-gonic/gin) | Go | [`0f09c3a`](https://github.com/gin-gonic/gin/tree/0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646) | MIT | 7 | 194 | 6,785 → 630 lines (**11×**) |
-| [ripgrep](https://github.com/BurntSushi/ripgrep) | Rust | [`6892bc2`](https://github.com/BurntSushi/ripgrep/tree/6892bc2b7efe5909cbbeec8f757ed2c4c76b1d30) | Unlicense or MIT | 10 | 115 | 43,627 → 886 lines (**49×**) |
-| [Spring PetClinic](https://github.com/spring-projects/spring-petclinic) | Java | [`500158f`](https://github.com/spring-projects/spring-petclinic/tree/500158f732419217507c7656904b8e6aa1bcc0d6) | Apache-2.0 | 5 | 18 | 1,644 → 92 lines (**18×**) |
-| [eShop](https://github.com/dotnet/eShop) | C# | [`913acea`](https://github.com/dotnet/eShop/tree/913acea66708a59595351174cee9b29f37179d29) | MIT | 20 | 477 | 19,546 → 3,428 lines (**5.7×**) |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) | Rust | [`6892bc2`](https://github.com/BurntSushi/ripgrep/tree/6892bc2b7efe5909cbbeec8f757ed2c4c76b1d30) | Unlicense or MIT | 10 | 115 | 43,627 → 930 lines (**47×**) |
+| [Spring PetClinic](https://github.com/spring-projects/spring-petclinic) | Java | [`500158f`](https://github.com/spring-projects/spring-petclinic/tree/500158f732419217507c7656904b8e6aa1bcc0d6) | Apache-2.0 | 5 | 18 | 1,644 → 95 lines (**17×**) |
+| [eShop](https://github.com/dotnet/eShop) | C# | [`913acea`](https://github.com/dotnet/eShop/tree/913acea66708a59595351174cee9b29f37179d29) | MIT | 20 | 477 | 19,546 → 3,432 lines (**5.7×**) |
 
 Lines are non-blank lines of non-test source files and of the generated sketches.
 
@@ -31,7 +31,7 @@ would do in an editor, followed by `archlock accept`. `regenerate.sh` replays th
   [`zod.locales`](zod/archlock/zod.locales.arch.py) and [`zod.v3`](zod/archlock/zod.v3.arch.py).
   `archlock accept` filled in their APIs and dependencies. The graph in
   [`zod/archlock/README.md`](zod/archlock/README.md) now shows how Zod is built: both APIs sit on
-  `zod.core`. The sketches grow from 1,492 to 5,824 lines (30× → 7.8×), because the contracts
+  `zod.core`. The sketches grow from 1,492 to 5,827 lines (30× → 7.8×), because the contracts
   between the layers are now part of the lockfile; that is the point of the split.
 - **shadcn-svelte: the docs app split into its parts.** The `docs` workspace package holds the
   whole site, including the component registry, as one module of about 1,900 components. Three

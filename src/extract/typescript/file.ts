@@ -4,10 +4,11 @@
  */
 
 import ts from "typescript";
-import { canonicalType, toSketchName } from "../../core/canonical.js";
+import { canonicalType, pythonString, toSketchName } from "../../core/canonical.js";
 import {
   type ArchSymbol,
   type ClassLikeSymbol,
+  type EnumMember,
   emptySoft,
   type FieldMember,
   INFERRED,
@@ -19,6 +20,7 @@ import {
 } from "../../core/model.js";
 import { countLines } from "../../fs/files.js";
 import { ANONYMOUS_DEFAULT, type FileFacts, type ImportFact } from "../facts.js";
+import { type TypeInfo, typeText } from "./typed.js";
 
 function scriptKind(path: string): ts.ScriptKind {
   if (path.endsWith(".tsx")) return ts.ScriptKind.TSX;
@@ -33,21 +35,44 @@ function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
   );
 }
 
+/**
+ * @param typed the file's source file and type checker in typed mode: types the code leaves
+ *   out are then asked from the checker instead of being `<inferred>`
+ */
 export function extractTypeScriptFile(
   path: string,
   text: string,
   kind: ts.ScriptKind = scriptKind(path),
+  typed?: TypeInfo,
 ): FileFacts {
-  const sf = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, kind);
-  return new FileExtractor(path, sf).run(countLines(text));
+  const sf =
+    typed?.sourceFile ?? ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, kind);
+  return new FileExtractor(path, sf, typed?.checker).run(countLines(text));
 }
 
+/** A literal enum initializer as a Python literal (`2`, `-1`, `"paid"`); others are open. */
+function enumValue(init: ts.Expression | undefined): string | undefined {
+  if (!init) return undefined;
+  if (ts.isNumericLiteral(init)) return init.text;
+  if (
+    ts.isPrefixUnaryExpression(init) &&
+    init.operator === ts.SyntaxKind.MinusToken &&
+    ts.isNumericLiteral(init.operand)
+  ) {
+    return `-${init.operand.text}`;
+  }
+  if (ts.isStringLiteral(init) || ts.isNoSubstitutionTemplateLiteral(init)) {
+    return pythonString(init.text);
+  }
+  return undefined;
+}
 class FileExtractor {
   private readonly facts: FileFacts;
 
   constructor(
     private readonly path: string,
     private readonly sf: ts.SourceFile,
+    private readonly checker?: ts.TypeChecker,
   ) {
     this.facts = {
       path,
@@ -75,6 +100,7 @@ class FileExtractor {
       else if (ts.isImportEqualsDeclaration(stmt)) this.importEquals(stmt, exported);
       else if (ts.isExportDeclaration(stmt)) this.exportDeclaration(stmt);
       else if (ts.isExportAssignment(stmt)) this.exportAssignment(stmt);
+      else if (ts.isExpressionStatement(stmt)) this.commonJsExport(stmt);
       else if (ts.isFunctionDeclaration(stmt)) {
         const local = stmt.name?.text ?? ANONYMOUS_DEFAULT;
         const list = functions.get(local) ?? [];
@@ -105,10 +131,15 @@ class FileExtractor {
           kind: "enum",
           name: stmt.name.text,
           bases: [],
-          members: stmt.members.map((m) => ({
-            name: toSketchName(this.propertyName(m.name) ?? ""),
-            soft: emptySoft(),
-          })),
+          members: stmt.members.map((m) => {
+            const member: EnumMember = {
+              name: toSketchName(this.propertyName(m.name) ?? ""),
+              soft: emptySoft(),
+            };
+            const value = enumValue(m.initializer);
+            if (value !== undefined) member.value = value;
+            return member;
+          }),
           soft: emptySoft(),
           loc: this.loc(stmt),
         });
@@ -261,6 +292,62 @@ class FileExtractor {
     this.facts.exports.set("default", { kind: "local", local: ANONYMOUS_DEFAULT });
   }
 
+  /**
+   * CommonJS exports: `module.exports = { a, b: fn }`, `module.exports = value`,
+   * `module.exports.name = …` and `exports.name = …`.
+   */
+  private commonJsExport(stmt: ts.ExpressionStatement): void {
+    const e = stmt.expression;
+    if (!ts.isBinaryExpression(e) || e.operatorToken.kind !== ts.SyntaxKind.EqualsToken) return;
+    const target = e.left.getText(this.sf).replace(/\s+/g, "");
+    const value = skipOuterExpressions(e.right);
+    const exportAs = (name: string, expr: ts.Expression, node: ts.Node) => {
+      if (ts.isIdentifier(expr)) {
+        this.facts.exports.set(name, { kind: "local", local: expr.text });
+        return;
+      }
+      if (!this.facts.declarations.has(name))
+        this.declare(name, this.expressionSymbol(name, expr, undefined, node));
+      this.facts.exports.set(name, { kind: "local", local: name });
+    };
+    if (target === "module.exports") {
+      if (ts.isObjectLiteralExpression(value)) {
+        for (const p of value.properties) {
+          const name =
+            p.name && !ts.isComputedPropertyName(p.name)
+              ? p.name.getText(this.sf).replace(/^["']|["']$/g, "")
+              : null;
+          if (!name) continue;
+          if (ts.isShorthandPropertyAssignment(p)) {
+            this.facts.exports.set(name, { kind: "local", local: p.name.text });
+          } else if (ts.isPropertyAssignment(p)) {
+            exportAs(name, skipOuterExpressions(p.initializer), p);
+          } else if (ts.isMethodDeclaration(p)) {
+            this.declare(name, {
+              kind: "function",
+              name,
+              signatures: [this.signature(p)],
+              soft: emptySoft(),
+              loc: this.loc(p),
+            });
+            this.facts.exports.set(name, { kind: "local", local: name });
+          }
+        }
+      } else if (ts.isIdentifier(value)) {
+        this.facts.exports.set("default", { kind: "local", local: value.text });
+      } else {
+        this.declare(
+          ANONYMOUS_DEFAULT,
+          this.expressionSymbol(ANONYMOUS_DEFAULT, value, undefined, stmt),
+        );
+        this.facts.exports.set("default", { kind: "local", local: ANONYMOUS_DEFAULT });
+      }
+      return;
+    }
+    const m = /^(?:module\.)?exports\.([A-Za-z_$][\w$]*)$/.exec(target);
+    if (m) exportAs(m[1] as string, value, stmt);
+  }
+
   /** Declares the names bound by a variable declaration; returns the local names. */
   private variable(decl: ts.VariableDeclaration): string[] {
     if (ts.isIdentifier(decl.name)) {
@@ -278,7 +365,7 @@ class FileExtractor {
           this.declare(el.name.text, {
             kind: "const",
             name: el.name.text,
-            type: INFERRED,
+            type: this.inferredType(el.name),
             soft: emptySoft(),
             loc: this.loc(el),
           });
@@ -311,10 +398,32 @@ class FileExtractor {
     return {
       kind: "const",
       name,
-      type: typeNode ? canonicalType(typeNode.getText(this.sf)) : INFERRED,
+      type: typeNode
+        ? canonicalType(typeNode.getText(this.sf))
+        : this.inferredType(ts.isVariableDeclaration(node) ? node.name : (init ?? node)),
       soft: emptySoft(),
       loc: this.loc(node),
     };
+  }
+
+  /** The checker's type at a node (typed mode), else `<inferred>`. */
+  private inferredType(node: ts.Node): string {
+    if (!this.checker) return INFERRED;
+    return typeText(this.checker, this.checker.getTypeAtLocation(node), node);
+  }
+
+  /** The checker's return type of a signature (typed mode), else `<inferred>`. */
+  private inferredReturn(node: ts.SignatureDeclaration): string {
+    const signature = this.checker?.getSignatureFromDeclaration(node);
+    if (!this.checker || !signature) return INFERRED;
+    return typeText(this.checker, this.checker.getReturnTypeOfSignature(signature), node);
+  }
+
+  /** An unannotated parameter with a default value: its type from the checker (typed mode). */
+  private inferredParam(p: ts.ParameterDeclaration): string | null {
+    if (!this.checker || p.initializer === undefined) return null;
+    const type = this.inferredType(p.name);
+    return type === INFERRED || type === "any" ? null : type;
   }
 
   private typeParams(params: ts.NodeArray<ts.TypeParameterDeclaration> | undefined): string[] {
@@ -329,7 +438,7 @@ class FileExtractor {
       params.push({
         kind: p.dotDotDotToken ? "rest" : "normal",
         name,
-        type: p.type ? canonicalType(p.type.getText(this.sf)) : null,
+        type: p.type ? canonicalType(p.type.getText(this.sf)) : this.inferredParam(p),
         optional:
           !p.dotDotDotToken && (p.questionToken !== undefined || p.initializer !== undefined),
       });
@@ -342,7 +451,7 @@ class FileExtractor {
         ? null
         : node.type
           ? canonicalType(node.type.getText(this.sf))
-          : INFERRED,
+          : this.inferredReturn(node),
       async: hasModifier(node, ts.SyntaxKind.AsyncKeyword),
     };
   }
@@ -408,7 +517,7 @@ class FileExtractor {
         members.add({
           kind: "field",
           name: pname,
-          type: m.type ? canonicalType(m.type.getText(this.sf)) : INFERRED,
+          type: m.type ? canonicalType(m.type.getText(this.sf)) : this.inferredType(m.name),
           readonly: hasModifier(m, ts.SyntaxKind.ReadonlyKeyword),
           optional: m.questionToken !== undefined,
           static: isStatic,
@@ -431,7 +540,7 @@ class FileExtractor {
           members.add({
             kind: "field",
             name: p.name.text,
-            type: p.type ? canonicalType(p.type.getText(this.sf)) : INFERRED,
+            type: p.type ? canonicalType(p.type.getText(this.sf)) : this.inferredType(p.name),
             readonly: hasModifier(p, ts.SyntaxKind.ReadonlyKeyword),
             optional: p.questionToken !== undefined,
             static: false,
@@ -488,7 +597,11 @@ class FileExtractor {
     return {
       kind: "field",
       name,
-      type: typeNode ? canonicalType(typeNode.getText(this.sf)) : INFERRED,
+      type: typeNode
+        ? canonicalType(typeNode.getText(this.sf))
+        : get
+          ? this.inferredReturn(get)
+          : INFERRED,
       readonly: set === undefined,
       optional: false,
       static: isStatic,

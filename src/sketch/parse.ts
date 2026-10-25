@@ -10,7 +10,7 @@
  */
 
 import type { Node } from "web-tree-sitter";
-import { decodePythonString } from "../core/canonical.js";
+import { canonicalType, decodePythonString, pythonString } from "../core/canonical.js";
 import {
   type ArchModule,
   type ArchSymbol,
@@ -75,6 +75,36 @@ const METHOD_DECORATORS = new Set([
   "abstractmethod",
   "optional",
 ]);
+/** Decorators that belong to one signature: modifiers that are part of a contract. */
+const SIGNATURE_DECORATORS = new Set(["unsafe", "const", "extern", "throws", "build", "cfg"]);
+
+/** The name of a decorator expression: `throws` for `@throws(IOException)`. */
+function decoratorName(d: Node): string {
+  return d.type === "call" ? (d.childForFieldName("function")?.text ?? "") : d.text;
+}
+
+/** Signature decorators of a definition, canonical, in source order. */
+function signatureDecorators(decorators: Node[]): string[] {
+  return decorators
+    .filter((d) => SIGNATURE_DECORATORS.has(decoratorName(d)))
+    .map((d) => canonicalType(d.text));
+}
+
+/**
+ * An enum member's value as a canonical Python literal: numbers as written, strings in the
+ * quoting `pythonString` produces; `...` and anything else leave the value open.
+ */
+function enumValue(node: Node): string | undefined {
+  if (node.type === "integer" || node.type === "float") return node.text;
+  if (node.type === "unary_operator" && /^-\s*\d/.test(node.text))
+    return node.text.replace(/\s+/g, "");
+  if (node.type === "true" || node.type === "false") return node.text;
+  if (node.type === "string") {
+    const decoded = decodePythonString(node.text);
+    return decoded === null ? undefined : pythonString(decoded);
+  }
+  return undefined;
+}
 
 /** Something comments can attach to. */
 interface Anchor {
@@ -425,17 +455,19 @@ class SketchParser {
     const { def, decorators } = splitDecorated(stmt);
     if (def.type === "class_definition") return this.parseClass(stmt, def, decorators);
     if (def.type === "function_definition") {
-      const unknown = decorators.filter((d) => d.text !== "overload");
+      const unknown = decorators.filter(
+        (d) => d.text !== "overload" && !SIGNATURE_DECORATORS.has(decoratorName(d)),
+      );
       if (unknown.length > 0) {
         throw new SketchSyntaxError(
-          `unsupported decorator \`@${unknown[0]?.text}\` on a function (only @overload)`,
+          `unsupported decorator \`@${unknown[0]?.text}\` on a function (allowed: @overload, ${[...SIGNATURE_DECORATORS].map((x) => `@${x}`).join(", ")})`,
           unknown[0] as Node,
         );
       }
       const fn: FunctionSymbol = {
         kind: "function",
         name: def.childForFieldName("name")?.text ?? "",
-        signatures: [this.signature(def, null)],
+        signatures: [this.signature(def, null, signatureDecorators(decorators))],
         soft: emptySoft(),
         loc: this.loc(def),
       };
@@ -504,14 +536,17 @@ class SketchParser {
             if (isEnum) {
               const left = assign.childForFieldName("left");
               const right = assign.childForFieldName("right");
-              if (left?.type !== "identifier" || assign.childForFieldName("type")) {
+              const annotation = assign.childForFieldName("type");
+              if (left?.type !== "identifier") {
                 throw new SketchSyntaxError(
-                  "enum members look like `Name = ...` or, with data, `Name = '(u8, u8)'`",
+                  "enum members look like `Name = ...`, `Name = 2` or, with data, `Name: '(u8, u8)'`",
                   node,
                 );
               }
               const m: EnumMember = { name: left.text, soft: emptySoft() };
-              if (right?.type === "string") m.payload = typeOf(right);
+              if (annotation) m.payload = typeOf(annotation);
+              const value = right ? enumValue(right) : undefined;
+              if (value !== undefined) m.value = value;
               if (enumMembers.some((e) => e.name === m.name)) {
                 throw new SketchSyntaxError(`duplicate enum member \`${m.name}\``, node);
               }
@@ -636,9 +671,10 @@ class SketchParser {
     }
     const flags = { static: false, classmethod: false, abstract: false, optional: false };
     for (const d of decorators) {
+      if (SIGNATURE_DECORATORS.has(decoratorName(d))) continue;
       if (!METHOD_DECORATORS.has(d.text)) {
         throw new SketchSyntaxError(
-          `unsupported decorator \`@${d.text}\`; methods allow ${[...METHOD_DECORATORS].map((x) => `@${x}`).join(", ")}`,
+          `unsupported decorator \`@${d.text}\`; methods allow ${[...METHOD_DECORATORS, ...SIGNATURE_DECORATORS].map((x) => `@${x}`).join(", ")}`,
           d,
         );
       }
@@ -651,7 +687,7 @@ class SketchParser {
     const method: MethodMember = {
       kind: "method",
       name: def.childForFieldName("name")?.text ?? "",
-      signatures: [this.signature(def, self)],
+      signatures: [this.signature(def, self, signatureDecorators(decorators))],
       ...flags,
       soft: emptySoft(),
       loc: this.loc(def),
@@ -660,13 +696,22 @@ class SketchParser {
     return method;
   }
 
-  private signature(def: Node, self: string | null): Signature {
+  private signature(def: Node, self: string | null, decorators: string[] = []): Signature {
     const paramsNode = def.childForFieldName("parameters");
     const params: Param[] = [];
     const nodes = paramsNode ? named(paramsNode).filter((n) => n.type !== "comment") : [];
+    let receiver: string | undefined;
     if (self !== null) {
       const first = nodes.shift();
-      if (first?.type !== "identifier" || first.text !== self) {
+      // `self: '&mut Self'` records a receiver that is not the usual one.
+      const typedSelf =
+        first?.type === "typed_parameter" &&
+        named(first)[0]?.type === "identifier" &&
+        named(first)[0]?.text === self;
+      if (typedSelf) {
+        const t = first?.childForFieldName("type");
+        if (t) receiver = typeOf(t);
+      } else if (first?.type !== "identifier" || first.text !== self) {
         throw new SketchSyntaxError(
           `method \`${def.childForFieldName("name")?.text}\` must take \`${self}\` as its first ` +
             "parameter (or use @staticmethod)",
@@ -692,12 +737,15 @@ class SketchParser {
         }
       });
     }
-    return {
+    const sig: Signature = {
       typeParams: typeParams(def),
       params,
       returns: ret ? typeOf(ret) : null,
       async: kids(def).some((c) => c.type === "async"),
     };
+    if (receiver !== undefined) sig.receiver = receiver;
+    if (decorators.length > 0) sig.decorators = decorators;
+    return sig;
   }
 
   /** Docstring and comments of a (possibly decorated) function definition. */

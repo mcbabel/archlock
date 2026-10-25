@@ -39,12 +39,14 @@ Update every caller.
 
 - Sketches use Python syntax as notation, whatever the project's language. Types are written in the module's own language.
 - `def f(a: T, b: U = ...) -> R` is a function; `b` is optional. `*rest: T` is a rest parameter. Methods take `self`; `@staticmethod` has none.
-- `class X(Protocol)` is an interface; `class E(Enum)` an enum; `X: TypeAlias = T` a type alias; `NAME: T` an exported constant.
-- Field flags: `Readonly[T]`, `Opt[T]` (optional property), `ClassVar[T]` (static). `'<inferred>'` means the code has no type annotation there.
+- `class X(Protocol)` is an interface; `class E(Enum)` an enum; `X: TypeAlias = T` a type alias; `NAME: T` an exported constant. Enum members: `A = ...` leaves the value open, `A = 2` or `A = 'a'` fixes it, `A: '(u8)'` carries data.
+- Field flags: `Readonly[T]`, `Opt[T]` (optional property), `ClassVar[T]` (static). `'<inferred>'` means the code has no type annotation there; `'<complex>'` an inferred type too long to write down.
+- In `@dataclass` and `@record` classes the fields come in constructor order; keep that order.
+- `self: T` names a receiver that is not the usual one; decorators such as `@throws(E)`, `@unsafe`, `@const`, `@extern("C")`, `@build("linux")` and `@cfg(unix)` belong to the signature below them.
 - Everything listed in a sketch must be public (exported from the module's `__entry__` when one is set); nothing else may be.
 - Names a sketch uses but does not define (e.g. `Customer`) are public symbols of the modules in its `__depends_on__`; import them from that module's entry.
 - C#: a module is a project (or a folder of one); its sketch lists the `public` types and their `public` members (in interfaces every member without an access modifier). Nested types are `Outer__Inner`; partial classes are one type. Types are C# types; `List[string]` means `List<string>`, `'string?'` is nullable.
-- C#: properties and fields are `Name: string` (`Readonly[…]` without a public setter, `ClassVar[…]` for `static` and `const`), events are `'event EventHandler'`, `def __getitem__` is an indexer, `def __init__` a constructor, `*items: 'T[]'` is `params T[] items`, and `'ref int'`, `'out int'`, `'this T'` keep their modifier. `@record`, `@struct`, `@static`, `@abstract`, `@sealed` and `@readonly` are the type's kind and modifiers.
+- C#: properties and fields are `Name: string` (`Readonly[…]` without a public setter, `ClassVar[…]` for `static` and `const`), events are `'event EventHandler'`, `def __getitem__` is an indexer, `def __init__` a constructor, `*items: 'T[]'` is `params T[] items`, and `'ref int'`, `'out int'`, `'this T'` keep their modifier (`'this T'` makes an extension method). Operators are static methods named like Python's (`def __add__(a: Money, b: Money) -> Money` is `operator +`, `__implicit__`/`__explicit__` are conversions). `@record`, `@struct`, `@static`, `@abstract`, `@sealed` and `@readonly` are the type's kind and modifiers.
 
 ## Sketches of the affected modules
 

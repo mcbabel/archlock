@@ -152,14 +152,14 @@ class CatalogDomainException(Exception):
 
 @record
 class CatalogFacetCount:
-    Count: Readonly[int]
     Id: Readonly[int]
+    Count: Readonly[int]
 
 @record
 class CatalogFacets:
     BrandCounts: Readonly[IReadOnlyList[CatalogFacetCount]]
-    BrandTotal: Readonly[int]
     TypeCounts: Readonly[IReadOnlyList[CatalogFacetCount]]
+    BrandTotal: Readonly[int]
     TypeTotal: Readonly[int]
 
 @sealed
@@ -205,8 +205,8 @@ class CatalogType:
 
 @record
 class ConfirmedOrderStockItem:
-    HasStock: Readonly[bool]
     ProductId: Readonly[int]
+    HasStock: Readonly[bool]
 
 @static
 class Extensions:
@@ -255,14 +255,14 @@ class PaginatedItems['TEntity: class']:
 
 @record
 class PaginationRequest:
-    PageIndex: Readonly[int]
     PageSize: Readonly[int]
+    PageIndex: Readonly[int]
 
 @record
 class ProductPriceChangedIntegrationEvent(IntegrationEvent):
+    ProductId: Readonly[int]
     NewPrice: Readonly[decimal]
     OldPrice: Readonly[decimal]
-    ProductId: Readonly[int]
 
 class Program: ...
 class RemoveHiLoAndIndexCatalogName(Migration): ...

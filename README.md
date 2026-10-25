@@ -112,7 +112,7 @@ jobs:
 
 ## With your coding agent
 
-- `archlock push` gives your agent a precise work order and re-checks until the code matches; tested end to end with Claude Code, with Codex CLI and OpenCode supported but not yet battle-tested.
+- `archlock push` gives your agent a precise work order and re-checks until the code matches; tested end to end with Claude Code and OpenCode, with Codex CLI supported but not yet battle-tested.
 - `archlock init --agents` adds the rules to `AGENTS.md` and `CLAUDE.md`, and `archlock mcp` is an MCP server for reading the architecture and running the check.
 - An agent skill ships in [`skills/archlock`](skills/archlock/SKILL.md). Everything else: [docs/AGENTS.md](docs/AGENTS.md).
 
@@ -121,13 +121,13 @@ jobs:
 | Project | Modules | Lines of code → architecture | `check` |
 |---|---|---|---|
 | Hono (TypeScript) | 19 | 25,971 → 1,790 (15×) | 0 errors, 81 deep-import warnings |
-| Zod (TypeScript), split into its layers by hand | 13 | 45,221 → 5,824 (7.8×) | 0 errors, 6 deep-import warnings |
+| Zod (TypeScript), split into its layers by hand | 13 | 45,221 → 5,827 (7.8×) | 0 errors, 6 deep-import warnings |
 | Flask (Python) | 3 | 7,563 → 542 (14×) | 0 errors, 14 warnings, cycle `flask → json → sansio` |
-| shadcn-svelte (Svelte), docs app split by hand | 9 | 133,471 → 3,011 (44×) | 0 errors, 0 warnings |
+| shadcn-svelte (Svelte), docs app split by hand | 9 | 133,461 → 3,011 (44×) | 0 errors, 0 warnings |
 | Gin (Go) | 7 | 6,785 → 630 (11×) | 0 errors, 0 warnings |
-| ripgrep (Rust) | 10 | 43,627 → 886 (49×) | 0 errors, 0 warnings |
-| Spring PetClinic (Java) | 5 | 1,644 → 92 (18×) | 0 errors, 0 warnings |
-| eShop (C#) | 20 | 19,546 → 3,428 (5.7×) | 0 errors, 0 warnings |
+| ripgrep (Rust) | 10 | 43,627 → 930 (47×) | 0 errors, 0 warnings |
+| Spring PetClinic (Java) | 5 | 1,644 → 95 (17×) | 0 errors, 0 warnings |
+| eShop (C#) | 20 | 19,546 → 3,432 (5.7×) | 0 errors, 0 warnings |
 
 Sketches, findings and a reproducible script: [examples/real-world](examples/real-world).
 

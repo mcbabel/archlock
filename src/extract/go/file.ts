@@ -13,6 +13,7 @@ import {
   type ClassLikeSymbol,
   emptySoft,
   type FieldMember,
+  type FunctionSymbol,
   INFERRED,
   type Location,
   type Member,
@@ -103,6 +104,55 @@ function receiverName(receiver: Node | null): string | null {
   return t?.type === "type_identifier" ? t.text : null;
 }
 
+const GOOS = new Set([
+  "aix",
+  "android",
+  "darwin",
+  "dragonfly",
+  "freebsd",
+  "illumos",
+  "ios",
+  "js",
+  "linux",
+  "netbsd",
+  "openbsd",
+  "plan9",
+  "solaris",
+  "wasip1",
+  "windows",
+]);
+const GOARCH = new Set([
+  "386",
+  "amd64",
+  "arm",
+  "arm64",
+  "loong64",
+  "mips",
+  "mips64",
+  "mips64le",
+  "mipsle",
+  "ppc64",
+  "ppc64le",
+  "riscv64",
+  "s390x",
+  "wasm",
+]);
+
+/** The build constraint: a `//go:build` line, or the GOOS/GOARCH suffix of the file name. */
+function buildConstraint(root: Node, path: string): string | null {
+  for (const c of root.namedChildren) {
+    if (!c || c.type === "package_clause") break;
+    const m = c.type === "comment" ? /^\/\/go:build\s+(.+)$/.exec(c.text) : null;
+    if (m) return (m[1] as string).trim().replace(/\s+/g, " ");
+  }
+  const parts = (path.split("/").pop() ?? "")
+    .replace(/(_test)?\.go$/, "")
+    .split("_")
+    .slice(1);
+  const tags = parts.slice(-2).filter((p) => GOOS.has(p) || GOARCH.has(p));
+  return tags.length > 0 ? tags.join(" && ") : null;
+}
+
 /** `//go:build ignore` (or `// +build ignore`) before the package clause. */
 function buildIgnored(root: Node): boolean {
   for (const c of root.namedChildren) {
@@ -143,6 +193,8 @@ class GoFileExtractor {
     this.facts.lines = lines;
     // Files excluded from every build (code generators and the like) are not part of the package.
     if (buildIgnored(root)) return this.facts;
+    const constraint = buildConstraint(root, this.path);
+    if (constraint) this.facts.goBuild = constraint;
     for (const decl of named(root)) {
       switch (decl.type) {
         case "import_declaration":
@@ -223,9 +275,16 @@ class GoFileExtractor {
 
   private method(decl: Node): void {
     const name = decl.childForFieldName("name")?.text ?? "";
-    const receiver = receiverName(decl.childForFieldName("receiver"));
+    const receiverList = decl.childForFieldName("receiver");
+    const receiver = receiverName(receiverList);
     if (!receiver || !isExported(name)) return;
-    this.facts.goMethods?.push({ receiver, method: this.methodMember(name, decl) });
+    const method = this.methodMember(name, decl);
+    // A pointer receiver is the usual one; a value receiver (`func (r Role)`) is recorded.
+    const type = (receiverList ? named(receiverList)[0] : undefined)?.childForFieldName("type");
+    if (type && type.type !== "pointer_type") {
+      for (const sig of method.signatures) sig.receiver = typeText(type);
+    }
+    this.facts.goMethods?.push({ receiver, method });
   }
 
   private methodMember(name: string, node: Node): MethodMember {
@@ -300,6 +359,8 @@ class GoFileExtractor {
       if (elem.type === "method_elem") {
         const name = elem.childForFieldName("name")?.text ?? "";
         if (isExported(name)) symbol.members.push(this.methodMember(name, elem));
+        // An unexported method keeps other packages from implementing the interface.
+        else if (!symbol.decorators.includes("sealed")) symbol.decorators.push("sealed");
       } else if (elem.type === "type_elem") {
         // Embedded interfaces and type sets (`~int | ~string`).
         symbol.bases.push(typeText(elem));
@@ -434,6 +495,40 @@ function valueType(node: Node): string | null {
   return null;
 }
 
+/** Signatures that differ only in their decorators are the same. */
+function sameSignature(a: Signature, b: Signature): boolean {
+  const key = (s: Signature) =>
+    JSON.stringify([s.typeParams, s.params, s.returns, s.receiver ?? null]);
+  return key(a) === key(b);
+}
+
+/**
+ * Build variants (`path_linux.go`, `path_windows.go`) with different signatures: each becomes
+ * a signature of the first file's symbol, marked with its constraint (`@build("linux")`).
+ */
+function mergeVariant(
+  target: Signature[],
+  targetBuild: string | undefined,
+  variant: Signature[],
+  variantBuild: string | undefined,
+): void {
+  const mark = (sig: Signature, build: string | undefined) => {
+    if (build && !sig.decorators?.some((d) => d.startsWith("build("))) {
+      sig.decorators = [
+        ...(sig.decorators ?? []),
+        canonicalType(`build(${JSON.stringify(build)})`),
+      ];
+    }
+  };
+  for (const sig of variant) {
+    if (target.some((t) => sameSignature(t, sig))) continue;
+    for (const t of target) mark(t, targetBuild);
+    const copy = structuredClone(sig);
+    mark(copy, variantBuild);
+    target.push(copy);
+  }
+}
+
 /**
  * Attaches the methods collected by `extractGoFile` to their types, per package (directory).
  * Works on copies of the declarations, so cached facts stay as extracted.
@@ -456,12 +551,35 @@ export function attachGoMethods(facts: FileFacts[]): void {
         }
       }
     }
+    const functions = new Map<string, { fn: FunctionSymbol; build: string | undefined }>();
+    for (const f of files) {
+      for (const [name, symbols] of f.declarations) {
+        const s = symbols[0];
+        if (s?.kind !== "function") continue;
+        const first = functions.get(name);
+        if (!first) functions.set(name, { fn: s, build: f.goBuild });
+        else mergeVariant(first.fn.signatures, first.build, s.signatures, f.goBuild);
+      }
+    }
+    const methodBuild = new Map<MethodMember, string | undefined>();
     for (const f of files) {
       for (const { receiver, method } of f.goMethods ?? []) {
         const t = types.get(receiver);
         if (t?.kind !== "class") continue;
         const members: Member[] = t.members;
-        if (!members.some((m) => m.name === method.name)) members.push(structuredClone(method));
+        const existing = members.find((m) => m.kind === "method" && m.name === method.name);
+        if (existing?.kind === "method") {
+          mergeVariant(
+            existing.signatures,
+            methodBuild.get(existing),
+            method.signatures,
+            f.goBuild,
+          );
+        } else if (!existing) {
+          const copy = structuredClone(method);
+          methodBuild.set(copy, f.goBuild);
+          members.push(copy);
+        }
       }
     }
   }

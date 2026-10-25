@@ -7,9 +7,9 @@
   },
   "zod": {
     "codeLines": 45221,
-    "sketchLines": 5824,
+    "sketchLines": 5827,
     "modules": 13,
-    "symbols": 1932
+    "symbols": 1935
   },
   "flask": {
     "codeLines": 7563,
@@ -18,7 +18,7 @@
     "symbols": 49
   },
   "shadcn-svelte": {
-    "codeLines": 133471,
+    "codeLines": 133461,
     "sketchLines": 3011,
     "modules": 9,
     "symbols": 1939
@@ -31,19 +31,19 @@
   },
   "ripgrep": {
     "codeLines": 43627,
-    "sketchLines": 886,
+    "sketchLines": 930,
     "modules": 10,
     "symbols": 115
   },
   "spring-petclinic": {
     "codeLines": 1644,
-    "sketchLines": 92,
+    "sketchLines": 95,
     "modules": 5,
     "symbols": 18
   },
   "eShop": {
     "codeLines": 19546,
-    "sketchLines": 3428,
+    "sketchLines": 3432,
     "modules": 20,
     "symbols": 477
   }

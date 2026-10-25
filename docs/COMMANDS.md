@@ -2,14 +2,14 @@
 
 | Command | What it does |
 |---|---|
-| `archlock init` | Detects modules (Go packages, Rust crates and modules, Java source roots and packages, C# projects, workspaces, `src/` folders, Python packages), writes `archlock.config.json`, one sketch per module and `archlock/README.md` with a Mermaid graph. `--agents` adds a section to `AGENTS.md`/`CLAUDE.md`, `--with-summaries` asks your agent for docstring suggestions, `--force` starts over. |
+| `archlock init` | Detects modules (Go packages, Rust crates and modules, Java source roots and packages, C# projects, workspaces, `src/` folders, Python packages), writes `archlock.config.json`, one sketch per module and `archlock/README.md` with a Mermaid graph. `--agents` adds a section to `AGENTS.md`/`CLAUDE.md`, `--with-summaries` asks your agent for docstring suggestions, `--typed` turns on [typed mode](FORMAT.md#mapping-from-typescript) for TypeScript and JavaScript, `--force` starts over. |
 | `archlock check` | Compares code and sketches. `--format human\|json\|github`. Exit 1 on errors. |
-| `archlock accept [module…]` | Adopts code changes into the sketches, keeping comments. Shows a diff and asks first. `--deps-only`, `--symbols-only`, `--yes`. |
-| `archlock push` | Lets your agent change the code to match the sketches, round by round. `--agent`, `--print-prompt`, `--max-rounds`, `--check-command`, `--yes`. Tested end to end with Claude Code; see [AGENTS.md](AGENTS.md). |
+| `archlock accept [module…]` | Adopts code changes into the sketches, keeping comments (also of renamed symbols, when the rename is unambiguous). Shows a diff and asks first. `--deps-only`, `--symbols-only`, `--yes`. |
+| `archlock push` | Lets your agent change the code to match the sketches, round by round. `--agent`, `--print-prompt`, `--max-rounds`, `--check-command`, `--yes`. Tested end to end with Claude Code and OpenCode; see [AGENTS.md](AGENTS.md). |
 | `archlock diff` | Architecture changes since the merge base. `--base <ref>`, `--format terminal\|markdown\|json`. |
 | `archlock stats` | Compression ratio, modules, symbols, edges, share of unannotated types, cycles. `--badge`. The ratio is shown from 300 lines of code and only when the sketches are shorter than the code; otherwise a short note takes its place. |
 | `archlock graph` | The module graph as Mermaid. |
-| `archlock mcp` | MCP server over stdio (`get_architecture`, `check`, `explain_violation`, `get_module_for_file`). |
+| `archlock mcp` | MCP server over stdio (`get_architecture`, `check`, `explain_violation`, `get_module_for_file`), without extra dependencies. |
 
 Global options: `--cwd`, `--config`, `--json` (versioned with `schemaVersion`), `--no-color`,
 `--quiet`, `--no-cache`. Exit codes: 0 success, 1 violations (or remaining issues after `push`),
@@ -19,7 +19,8 @@ Global options: `--cwd`, `--config`, `--json` (versioned with `schemaVersion`), 
 
 `archlock.config.json` ([schema](../schema.json)) sets the sketch folder, languages, include and
 exclude globs, the severity of every violation type, the opt-in `maxTypeLength`
-([FORMAT.md](FORMAT.md#very-long-types-opt-in)) and the agent settings (`agent.default`,
+([FORMAT.md](FORMAT.md#very-long-types-opt-in)), the opt-in `typed`
+([FORMAT.md](FORMAT.md#mapping-from-typescript)) and the agent settings (`agent.default`,
 `agent.command`, `agent.maxRounds`, `agent.verifyCommands`; see [AGENTS.md](AGENTS.md)).
 
 ## Languages

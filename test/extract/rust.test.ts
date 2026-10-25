@@ -88,10 +88,10 @@ impl std::fmt::Display for Shape {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { Ok(()) }
 }`),
     ).toBe(`class Shape(Debug, 'std::fmt::Display', Enum):
-    Circle = '{ radius: f64 }'
-    Rect = '(f64, f64)'
+    Circle: '{ radius: f64 }'
+    Rect: '(f64, f64)'
     Point = ...
-    Big = ...
+    Big = 10
     def area(self) -> f64: ...
     @staticmethod
     def unit() -> Self: ...`);
@@ -131,7 +131,7 @@ impl crate::model::Cart { pub fn clear(&mut self) {} }`,
     ).toBe(`class model__Cart(Default):
     items: Vec[u64]
     MAX: ClassVar[usize]
-    def clear(self): ...
+    def clear(self: '&mut Self'): ...
     def total(self) -> u64: ...`);
   });
 
@@ -291,6 +291,44 @@ pub fn check() { serde_json::to_string(&1); crate::model::User; Vec::<u8>::new()
     ]);
     // A binary has no public API.
     expect(facts.find((f) => f.path === "app/src/main.rs")?.exports.size).toBe(0);
+  });
+
+  it("receivers other than &self, unsafe/const/extern functions and cfg variants", async () => {
+    expect(
+      await lib(`pub struct Buf;
+impl Buf {
+    pub fn len(&self) -> usize { 0 }
+    pub fn push(&mut self, b: u8) {}
+    pub fn into_vec(self) -> Vec<u8> { vec![] }
+    pub fn boxed(self: Box<Self>) {}
+    pub const fn new() -> Self { Buf }
+    pub unsafe fn raw(&self) -> *const u8 { todo!() }
+}
+pub extern "C" fn hook(x: i32) -> i32 { x }
+#[cfg(unix)]
+pub fn home() -> String { String::new() }
+#[cfg(windows)]
+pub fn home(user: &str) -> String { String::new() }`),
+    ).toBe(`class Buf:
+    def boxed(self: Box[Self]): ...
+    def into_vec(self: Self) -> Vec[u8]: ...
+    def len(self) -> usize: ...
+    @staticmethod
+    @const
+    def new() -> Self: ...
+    def push(self: '&mut Self', b: u8): ...
+    @unsafe
+    def raw(self) -> '*const u8': ...
+
+@cfg(unix)
+@overload
+def home() -> String: ...
+@cfg(windows)
+@overload
+def home(user: '&str') -> String: ...
+
+@extern("C")
+def hook(x: i32) -> i32: ...`);
   });
 });
 

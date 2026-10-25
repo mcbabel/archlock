@@ -19,6 +19,7 @@ import {
   type Member,
   type MethodMember,
   type Param,
+  positionalFirst,
   type Signature,
 } from "../../core/model.js";
 import { countLines } from "../../fs/files.js";
@@ -89,12 +90,24 @@ function params(node: Node): Param[] {
 function signature(node: Node, isConstructor: boolean): Signature {
   const ret = node.childForFieldName("type");
   const dims = node.childForFieldName("dimensions")?.text ?? "";
-  return {
+  const sig: Signature = {
     typeParams: typeParams(node),
     params: params(node),
     returns: isConstructor ? null : ret ? canonicalType(`${ret.text}${dims}`) : null,
     async: false,
   };
+  // Declared exceptions are part of the contract: `@throws(IOException)`.
+  const throws = named(node).find((c) => c.type === "throws");
+  if (throws) {
+    sig.decorators = [
+      canonicalType(
+        `throws(${named(throws)
+          .map((t) => t.text)
+          .join(", ")})`,
+      ),
+    ];
+  }
+  return sig;
 }
 
 export function extractJavaFile(parser: Parser, path: string, text: string): FileFacts {
@@ -348,6 +361,11 @@ class JavaFileExtractor {
       soft: emptySoft(),
       loc,
     };
+    if (decl.type === "record_declaration")
+      positionalFirst(
+        sym,
+        params(decl).map((p) => p.name),
+      );
     this.declare(name, sym);
   }
 

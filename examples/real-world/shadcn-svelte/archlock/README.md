@@ -6,7 +6,7 @@ This folder is the architecture lockfile of this repository, maintained with [ar
 Each `*.arch.py` file sketches one module: which files belong to it, which modules it may depend on,
 and its public API. CI runs `archlock check`, so every architecture change is visible and deliberate.
 
-**133,471 lines of code → 3,011 lines of architecture (44×)**
+**133,461 lines of code → 3,011 lines of architecture (44×)**
 
 ```mermaid
 graph LR

@@ -3,7 +3,7 @@
  * `tsconfig.json` (including `extends`, `paths`, `baseUrl` and solution-style `references`).
  */
 
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import ts from "typescript";
@@ -252,10 +252,114 @@ const NUXT_CONFIGS = ["nuxt.config.ts", "nuxt.config.js", "nuxt.config.mjs"];
 /**
  * Aliases that frameworks declare in generated tsconfig files, which usually do not exist in a
  * fresh checkout: SvelteKit's `$lib` (`src/lib` next to `svelte.config.*`), and Nuxt's `~`/`@`
- * (the source directory: `app/` if it exists, else the directory of `nuxt.config.*`) and
- * `~~`/`@@` (the directory of `nuxt.config.*`).
+ * (the source directory: `srcDir` of the config, else `app/` if it exists, else the directory of
+ * `nuxt.config.*`) and `~~`/`@@` (the directory of `nuxt.config.*`). Vite's `resolve.alias`
+ * comes first.
  */
+/** `srcDir: 'src/'` in a Nuxt config, read as text (the config is never run). */
+/** The `srcDir` of a Nuxt config in `dir`, read as text; null without one. */
+export function nuxtSrcDir(dir: string): string | null {
+  for (const name of NUXT_CONFIGS) {
+    try {
+      const m = /\bsrcDir\s*:\s*['"`]([^'"`]+)['"`]/.exec(readFileSync(join(dir, name), "utf8"));
+      if (m) return m[1] as string;
+    } catch {
+      // No config of this name.
+    }
+  }
+  return null;
+}
+
+const VITE_CONFIGS = ["vite.config.ts", "vite.config.mts", "vite.config.js", "vite.config.mjs"];
+const viteAliasCache = new Map<string, [string, string][]>();
+
+/**
+ * Aliases of a Vite config, read as text: `alias: { '@': <dir> }` and
+ * `alias: [{ find: '@', replacement: <dir> }]`, where `<dir>` is a string,
+ * `fileURLToPath(new URL('./src', import.meta.url))` or `path.resolve(__dirname, 'src')`.
+ */
+export function viteAliases(dir: string): [string, string][] {
+  const cached = viteAliasCache.get(dir);
+  if (cached) return cached;
+  const out: [string, string][] = [];
+  for (const name of VITE_CONFIGS) {
+    let text: string;
+    try {
+      text = readFileSync(join(dir, name), "utf8");
+    } catch {
+      continue;
+    }
+    const target = (expr: string): string | null => {
+      const url = /new\s+URL\(\s*['"`]([^'"`]+)['"`]\s*,\s*import\.meta\.url\s*\)/.exec(expr);
+      if (url) return url[1] as string;
+      const res = /resolve\(\s*(?:__dirname|process\.cwd\(\))\s*,\s*['"`]([^'"`]+)['"`]/.exec(expr);
+      if (res) return res[1] as string;
+      const str = /^\s*['"`]([^'"`]+)['"`]\s*$/.exec(expr);
+      return str && /^\.{0,2}\//.test(str[1] as string) ? (str[1] as string) : null;
+    };
+    const block = /\balias\s*:\s*([[{])/.exec(text);
+    if (!block) break;
+    // The alias block up to its matching bracket.
+    let depth = 0;
+    let end = block.index + block[0].length - 1;
+    for (; end < text.length; end++) {
+      const ch = text[end];
+      if (ch === "{" || ch === "[" || ch === "(") depth++;
+      else if (ch === "}" || ch === "]" || ch === ")") {
+        depth--;
+        if (depth === 0) break;
+      }
+    }
+    const body = text.slice(block.index + block[0].length, end);
+    for (const m of body.matchAll(
+      /find\s*:\s*['"`]([^'"`]+)['"`]\s*,\s*replacement\s*:\s*([^}]+)/g,
+    )) {
+      const t = target(m[2] as string);
+      if (t) out.push([m[1] as string, t]);
+    }
+    for (const m of body.matchAll(
+      /(?:^|[,{\s])['"`]?([@~#$][\w@~#$/-]*|[A-Za-z_][\w-]*)['"`]?\s*:\s*/g,
+    )) {
+      if (m[1] === "find" || m[1] === "replacement") continue;
+      const t = target(valueAt(body, (m.index ?? 0) + m[0].length));
+      if (t) out.push([m[1] as string, t]);
+    }
+    break;
+  }
+  out.sort((a, b) => b[0].length - a[0].length);
+  viteAliasCache.set(dir, out);
+  return out;
+}
+
+/** The expression starting at `start`, up to the next comma or brace outside brackets. */
+function valueAt(text: string, start: number): string {
+  let depth = 0;
+  let end = start;
+  for (; end < text.length; end++) {
+    const ch = text[end];
+    if (ch === "(" || ch === "[" || ch === "{") depth++;
+    else if (ch === ")" || ch === "]" || ch === "}") {
+      if (depth === 0) break;
+      depth--;
+    } else if (ch === "," && depth === 0) break;
+  }
+  return text.slice(start, end);
+}
+
 function frameworkAlias(specifier: string, fromAbs: string, root: string): string | null {
+  for (let dir = dirname(fromAbs); dir.startsWith(root); dir = dirname(dir)) {
+    for (const [key, target] of viteAliases(dir)) {
+      if (specifier === key || specifier.startsWith(`${key}/`)) {
+        const hit = firstFile(join(dir, target, specifier.slice(key.length)));
+        if (hit) return hit;
+      }
+    }
+    if (dir === root) break;
+  }
+  return frameworkDefaults(specifier, fromAbs, root);
+}
+
+function frameworkDefaults(specifier: string, fromAbs: string, root: string): string | null {
   const lib = /^\$lib(\/.*)?$/.exec(specifier);
   const nuxt = /^(~~|@@|~|@)(\/.*)?$/.exec(specifier);
   if (!lib && !nuxt) return null;
@@ -264,10 +368,15 @@ function frameworkAlias(specifier: string, fromAbs: string, root: string): strin
     if (lib && has(SVELTE_CONFIGS)) return firstFile(join(dir, "src", "lib", lib[1] ?? ""));
     if (nuxt && has(NUXT_CONFIGS)) {
       const [, prefix, rest] = nuxt;
+      const custom = nuxtSrcDir(dir);
       const srcDir =
-        prefix === "~~" || prefix === "@@" || !isDirectory(join(dir, "app"))
+        prefix === "~~" || prefix === "@@"
           ? dir
-          : join(dir, "app");
+          : custom !== null
+            ? join(dir, custom)
+            : isDirectory(join(dir, "app"))
+              ? join(dir, "app")
+              : dir;
       return firstFile(join(srcDir, rest ?? ""));
     }
     if (dir === root) break;

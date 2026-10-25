@@ -40,6 +40,30 @@ describe("archlock accept", () => {
     );
   });
 
+  it("comments follow a renamed symbol and the rename is reported", async () => {
+    const dir = await initialized();
+    edit(
+      dir,
+      "archlock/billing.arch.py",
+      "def createInvoice(",
+      "# invariant: at least one line\ndef createInvoice(",
+    );
+    edit(
+      dir,
+      "src/billing/invoice.ts",
+      "export function createInvoice(",
+      "export function newInvoice(",
+    );
+    edit(dir, "src/billing/invoice.test.ts", /createInvoice/g, "newInvoice");
+    edit(dir, "src/main.ts", /createInvoice/g, "newInvoice");
+    const accept = await archlock(dir, "accept", "--yes");
+    expect(accept.code).toBe(0);
+    expect(accept.stdout).toContain("billing.createInvoice → billing.newInvoice");
+    expect(read(dir, "archlock/billing.arch.py")).toContain(
+      "# invariant: at least one line\ndef newInvoice(",
+    );
+  });
+
   it("only touches the named modules", async () => {
     const dir = await initialized();
     edit(dir, "src/billing/invoice.ts", /$/, "\nexport function voidInvoice(): void {}\n");

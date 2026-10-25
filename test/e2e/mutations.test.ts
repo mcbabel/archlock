@@ -253,6 +253,22 @@ const componentMutations: ComponentMutation[] = [
     expected: [{ rule: "undeclared_dependency", module: "utils" }],
   },
   {
+    name: "Nuxt: an auto-imported component in a template is still a dependency",
+    fixture: "nuxt-app",
+    apply: (d) => edit(d, "pages/index.vue", /^import CartSummary.*\n/m, ""),
+    expected: [],
+  },
+  {
+    name: "Nuxt: a lazy auto-imported component from an undeclared module",
+    fixture: "nuxt-app",
+    apply: (d) =>
+      write(d, "composables/Badge.vue", '<template><LazyPriceTag :value="1" /></template>\n'),
+    expected: [
+      { rule: "public_symbol_added", module: "composables", symbol: "Badge" },
+      { rule: "undeclared_dependency", module: "composables" },
+    ],
+  },
+  {
     name: "Vue: a new component file is a new public symbol",
     fixture: "vue-app",
     apply: (d) => write(d, "src/components/Avatar.vue", "<template><img /></template>\n"),

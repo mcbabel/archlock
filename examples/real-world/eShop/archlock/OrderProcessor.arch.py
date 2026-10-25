@@ -1,6 +1,6 @@
 __module__ = "OrderProcessor"
 __paths__ = ["src/OrderProcessor/**"]
-__depends_on__ = ["eShop.ServiceDefaults", "EventBus"]
+__depends_on__ = ["eShop.ServiceDefaults", "EventBus", "EventBusRabbitMQ"]
 
 class IGracePeriodOrdersRepository(Protocol):
     def GetConfirmedGracePeriodOrdersAsync(

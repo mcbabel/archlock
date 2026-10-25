@@ -59,10 +59,7 @@ def snapshotNow(tag: string) -> string: ...
 def table(rows: Array[Record[string, string | number]]) -> void: ...
 
 benchUtil__zod4: 'typeof import("zod4")'
-clone: '<inferred>'
 DATA: 'any[]'
-equals: '<inferred>'
-is_: '<inferred>'
 objA: '<inferred>'
 objB: '<inferred>'
 objC: '<inferred>'
@@ -71,4 +68,10 @@ objE: '<inferred>'
 object_setup__zod4: '<inferred>'
 SINK: any
 sink: any
+typia_case_build_index__clone: '<inferred>'
+typia_case_build_index__equals: '<inferred>'
+typia_case_build_index__is_: '<inferred>'
+typia_case_src_index__clone: '<inferred>'
+typia_case_src_index__equals: '<inferred>'
+typia_case_src_index__is_: '<inferred>'
 zod3: '<inferred>'

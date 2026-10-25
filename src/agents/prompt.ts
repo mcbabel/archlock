@@ -107,8 +107,10 @@ export function buildPushPrompt(result: CheckResult, opts: PromptOptions): strin
   out.push(
     `- Sketches use Python syntax as notation, whatever the project's language. Types are written in the module's own language${kinds.has("typescript") || COMPONENT_BASES.some(([k]) => kinds.has(k)) ? ": TypeScript types stay TypeScript (`Promise[T]` means `Promise<T>`; quoted types like `'{ a: number }'` are verbatim)" : ""}.`,
     "- `def f(a: T, b: U = ...) -> R` is a function; `b` is optional. `*rest: T` is a rest parameter. Methods take `self`; `@staticmethod` has none.",
-    "- `class X(Protocol)` is an interface; `class E(Enum)` an enum; `X: TypeAlias = T` a type alias; `NAME: T` an exported constant.",
-    "- Field flags: `Readonly[T]`, `Opt[T]` (optional property), `ClassVar[T]` (static). `'<inferred>'` means the code has no type annotation there.",
+    "- `class X(Protocol)` is an interface; `class E(Enum)` an enum; `X: TypeAlias = T` a type alias; `NAME: T` an exported constant. Enum members: `A = ...` leaves the value open, `A = 2` or `A = 'a'` fixes it, `A: '(u8)'` carries data.",
+    "- Field flags: `Readonly[T]`, `Opt[T]` (optional property), `ClassVar[T]` (static). `'<inferred>'` means the code has no type annotation there; `'<complex>'` an inferred type too long to write down.",
+    "- In `@dataclass` and `@record` classes the fields come in constructor order; keep that order.",
+    '- `self: T` names a receiver that is not the usual one; decorators such as `@throws(E)`, `@unsafe`, `@const`, `@extern("C")`, `@build("linux")` and `@cfg(unix)` belong to the signature below them.',
     "- Everything listed in a sketch must be public (exported from the module's `__entry__` when one is set); nothing else may be.",
     "- Names a sketch uses but does not define (e.g. `Customer`) are public symbols of the modules in its `__depends_on__`; import them from that module's entry.",
     ...componentNotes(kinds),
@@ -236,8 +238,8 @@ function goNotes(kinds: Set<SourceKind>): string[] {
   if (!kinds.has("go")) return [];
   return [
     "- Go: a module is a package (its `__paths__` directory). Everything in its sketch is an exported (capitalized) identifier; types are Go types (`'*Store'`, `'[]byte'`, `'(int, error)'` for several results, `'untyped string'` for an untyped constant).",
-    "- Go: `class Store:` is a struct (fields are exported fields, bases are embedded types), `class Reader(Protocol)` an interface, `class ID(string)` a defined type with that underlying type. `def Get(self, …)` is a method; declare it with a receiver, `func (s *Store) Get(…)`, in any file of the package. `*opts: Option` is `opts ...Option`; `_1`, `_2` are unnamed parameters.",
-    "- Go: a name defined in several files of one package (build variants such as `path_linux.go` and `path_windows.go`) is compared in the first of them only; change every variant.",
+    "- Go: `class Store:` is a struct (fields are exported fields, bases are embedded types), `class Reader(Protocol)` an interface, `class ID(string)` a defined type with that underlying type. `def Get(self, …)` is a method with a pointer receiver, `func (s *Store) Get(…)`, in any file of the package; `def Get(self: Store, …)` has a value receiver, `func (s Store) Get(…)`. `@sealed` marks an interface with unexported methods. `*opts: Option` is `opts ...Option`; `_1`, `_2` are unnamed parameters.",
+    '- Go: build variants (`path_linux.go`, `path_windows.go`, `//go:build` lines) with different signatures are `@overload`s marked `@build("linux")`; change every variant.',
   ];
 }
 
@@ -245,7 +247,7 @@ function rustNotes(kinds: Set<SourceKind>): string[] {
   if (!kinds.has("rust")) return [];
   return [
     "- Rust: the sketch lists what the module's `__entry__` (`lib.rs`, `mod.rs` or the module file) makes public: `pub` items, `pub use` re-exports, and the items of `pub mod` children as `child__item` (`net__TcpListener` is `net::TcpListener`). `pub(crate)` items are not public. Types are Rust types; `Vec[u8]` means `Vec<u8>`.",
-    "- Rust: `class Config:` is a struct (fields are `pub` fields; bases are derived and implemented traits), `class Shape(…, Enum)` an enum whose members carry their data (`Circle = '{ radius: f64 }'`), `class Store(Protocol)` a trait. `def get(self, …)` is a method of an `impl` block (any file of the crate); `@staticmethod` has no `self`. Put a new trait in the bases by writing `impl Trait for Type`.",
+    "- Rust: `class Config:` is a struct (fields are `pub` fields; bases are derived and implemented traits), `class Shape(…, Enum)` an enum whose members carry their data (`Circle: '{ radius: f64 }'`) or a discriminant (`Big = 10`), `class Store(Protocol)` a trait. `def get(self, …)` is a method of an `impl` block (any file of the crate) taking `&self`; `self: '&mut Self'`, `self: Self` and `self: Box[Self]` are the other receivers, `@staticmethod` has none. `@unsafe`, `@const`, `@extern(\"C\")` are `unsafe fn`, `const fn` and `extern \"C\" fn`; `@cfg(unix)` overloads are `#[cfg]` variants. Put a new trait in the bases by writing `impl Trait for Type`.",
   ];
 }
 
@@ -253,7 +255,7 @@ function javaNotes(kinds: Set<SourceKind>): string[] {
   if (!kinds.has("java")) return [];
   return [
     "- Java: a module is a package tree; its sketch lists the `public` types of its packages and their `public` members (in interfaces every member that is not `private`). Nested types are `Outer__Inner`; a name that two packages of the module share is qualified with the package (`api__Status`). Types are Java types; `List[String]` means `List<String>`.",
-    "- Java: `class Order(Base, Comparable[Order])` extends `Base` and implements `Comparable<Order>`; `class Repo(Protocol)` is an interface; `@record`, `@abstract`, `@final`, `@sealed` and `@annotation` are the type's kind and modifiers. `def __init__` is a constructor, `@overload` lists overloads, `@staticmethod` is `static`, `*args: String` is `String... args`, and `MAX: ClassVar[Readonly[int]]` is `public static final int MAX`.",
+    "- Java: `class Order(Base, Comparable[Order])` extends `Base` and implements `Comparable<Order>`; `class Repo(Protocol)` is an interface; `@record`, `@abstract`, `@final`, `@sealed` and `@annotation` are the type's kind and modifiers. `def __init__` is a constructor, `@overload` lists overloads, `@staticmethod` is `static`, `*args: String` is `String... args`, `@throws(IOException)` is a `throws` clause, and `MAX: ClassVar[Readonly[int]]` is `public static final int MAX`.",
   ];
 }
 
@@ -261,7 +263,7 @@ function csharpNotes(kinds: Set<SourceKind>): string[] {
   if (!kinds.has("csharp")) return [];
   return [
     "- C#: a module is a project (or a folder of one); its sketch lists the `public` types and their `public` members (in interfaces every member without an access modifier). Nested types are `Outer__Inner`; partial classes are one type. Types are C# types; `List[string]` means `List<string>`, `'string?'` is nullable.",
-    "- C#: properties and fields are `Name: string` (`Readonly[…]` without a public setter, `ClassVar[…]` for `static` and `const`), events are `'event EventHandler'`, `def __getitem__` is an indexer, `def __init__` a constructor, `*items: 'T[]'` is `params T[] items`, and `'ref int'`, `'out int'`, `'this T'` keep their modifier. `@record`, `@struct`, `@static`, `@abstract`, `@sealed` and `@readonly` are the type's kind and modifiers.",
+    "- C#: properties and fields are `Name: string` (`Readonly[…]` without a public setter, `ClassVar[…]` for `static` and `const`), events are `'event EventHandler'`, `def __getitem__` is an indexer, `def __init__` a constructor, `*items: 'T[]'` is `params T[] items`, and `'ref int'`, `'out int'`, `'this T'` keep their modifier (`'this T'` makes an extension method). Operators are static methods named like Python's (`def __add__(a: Money, b: Money) -> Money` is `operator +`, `__implicit__`/`__explicit__` are conversions). `@record`, `@struct`, `@static`, `@abstract`, `@sealed` and `@readonly` are the type's kind and modifiers.",
   ];
 }
 

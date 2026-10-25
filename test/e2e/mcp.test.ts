@@ -89,4 +89,18 @@ describe("archlock mcp", () => {
     );
     expect(none).toContain("belongs to no module");
   });
+
+  it("rejects invalid arguments with a JSON-RPC error that names the argument", async () => {
+    await expect(
+      client.callTool({ name: "explain_violation", arguments: { rule: "no_such_rule" } }),
+    ).rejects.toThrow(/"no_such_rule" is not a valid rule; expected one of undeclared_dependency/);
+    await expect(client.callTool({ name: "get_module_for_file", arguments: {} })).rejects.toThrow(
+      /the argument "path" is required/,
+    );
+  });
+
+  it("answers ping and names the server", async () => {
+    await expect(client.ping()).resolves.toBeDefined();
+    expect(client.getServerVersion()?.name).toBe("archlock");
+  });
 });

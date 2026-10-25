@@ -93,14 +93,14 @@ class Point:
       [
         "@dataclass(frozen=True)",
         "class Point:",
-        "    label: str",
+        "    x: float",
+        "    y: float",
         "    LIMIT: Readonly[int]",
+        "    label: str",
         "    name: str",
         "    norm: Readonly[float]",
         "    origin: ClassVar[Point]",
         "    tag: ClassVar['<inferred>']",
-        "    x: float",
-        "    y: float",
         "    def __init__(self, name: str): ...",
         "    def __eq__(self, other: object) -> bool: ...",
         "    @classmethod",
@@ -186,5 +186,26 @@ default_name = "x"
       [".star", "*", false, ""],
     ]);
     expect(facts.stars).toEqual([".star"]);
+  });
+
+  it("enum values are kept as literals", async () => {
+    const out = await sketchOf(`
+from enum import Enum
+
+class Color(Enum):
+    RED = 1
+    GREEN = "g"
+    BLUE = -2.5
+    AUTO = object()
+`);
+    expect(out).toBe(
+      [
+        "class Color(Enum):",
+        "    RED = 1",
+        "    GREEN = 'g'",
+        "    BLUE = -2.5",
+        "    AUTO = ...",
+      ].join("\n"),
+    );
   });
 });

@@ -91,6 +91,19 @@ function filePrefix(spec: ModuleSpec, file: string, packageDir: boolean): string
 }
 
 /**
+ * An external package as a Python module path for a re-export line:
+ * `@hono/node-server` → `hono.node_server`, `serde_json` → `serde_json`.
+ */
+function packagePath(pkg: string): string {
+  return pkg
+    .replace(/^@/, "")
+    .split(/[/.]/)
+    .filter(Boolean)
+    .map((part) => toSketchName(part.replace(/-/g, "_")))
+    .join(".");
+}
+
+/**
  * Default entry candidates: `index.*`, `__init__.py`, `lib.rs`, `main.rs` or `mod.rs` in the
  * module root or its `src/`; a module whose first path is a Rust file (`src/parser.rs`) has
  * that file as its entry.
@@ -247,6 +260,32 @@ export function buildProject(
     return out;
   };
 
+  /** The external package a re-exported name comes from (`export { z } from "zod"`), if any. */
+  const externalSource = (file: string, name: string, seen = new Set<string>()): string | null => {
+    const key = `${file}#${name}`;
+    if (seen.has(key)) return null;
+    seen.add(key);
+    const f = files.get(file);
+    const entry = f?.exports.get(name);
+    if (!f || !entry) return null;
+    let specifier: string | null = null;
+    let imported = name;
+    if (entry.kind === "reexport") {
+      specifier = entry.specifier;
+      imported = entry.name;
+    } else {
+      const binding = f.bindings.get(entry.local);
+      if (binding && !f.declarations.has(entry.local)) {
+        specifier = binding.specifier;
+        imported = binding.name;
+      }
+    }
+    if (specifier === null) return null;
+    const r = resolveSpecifier(file, specifier);
+    if (r.kind === "external") return r.package;
+    return r.kind === "file" && files.has(r.path) ? externalSource(r.path, imported, seen) : null;
+  };
+
   const defOwner = (def: Def): string | null =>
     def.kind === "module" ? def.module : ownership.owner(def.file);
 
@@ -297,8 +336,21 @@ export function buildProject(
 
     const symbols = new Map<string, ArchSymbol>();
     const reexports = new Map<string, Set<string>>();
+    // Different code names can need the same sketch name (`$el` and `_el`). A name that is
+    // already valid keeps itself; a changed one gets another `_` until it is free.
+    const sketchNames = new Map<string, string>();
+    const reserve = (exportNames: string[]) => {
+      for (const n of exportNames) if (toSketchName(n) === n) sketchNames.set(n, n);
+    };
+    const sketchName = (exportName: string): string => {
+      if (exportName === "default") return "default";
+      let name = toSketchName(exportName);
+      while (sketchNames.has(name) && sketchNames.get(name) !== exportName) name = `${name}_`;
+      sketchNames.set(name, exportName);
+      return name;
+    };
     const addSymbol = (exportName: string, def: Def & { kind: "decl" | "namespace" }) => {
-      const name = exportName === "default" ? "default" : toSketchName(exportName);
+      const name = sketchName(exportName);
       if (def.kind === "namespace") {
         mod.publicKeys.add(`${def.file}#*`);
         const key = `const:${name}`;
@@ -327,23 +379,43 @@ export function buildProject(
       set.add(toSketchName(exportName));
       reexports.set(module, set);
     };
+    // Re-exports of external packages through the module's entry, listed like those of other
+    // modules.
+    const external = new Map<string, Set<string>>();
+    const addExternal = (exportName: string, pkg: string) => {
+      const set = external.get(pkg) ?? new Set();
+      set.add(toSketchName(exportName));
+      external.set(pkg, set);
+    };
 
     if (mod.entry !== null) {
       const names = [...exportedNames(mod.entry)].sort(compareNames);
+      reserve(names);
       for (const name of names) {
         const def = resolveExport(mod.entry, name);
-        if (!def) continue;
+        if (!def) {
+          const pkg = externalSource(mod.entry, name);
+          if (pkg) addExternal(name, pkg);
+          continue;
+        }
         const owner = defOwner(def);
         if (owner === mod.name && def.kind !== "module") addSymbol(name, def);
         else if (owner !== null && owner !== mod.name) addReexport(name, owner);
       }
     } else {
-      const found: { file: string; name: string; def: Def & { kind: "decl" } }[] = [];
+      const found: {
+        file: string;
+        exportName: string;
+        name: string;
+        def: Def & { kind: "decl" };
+      }[] = [];
       for (const file of mod.files) {
         const f = files.get(file) as FileFacts;
         const names = [...f.exports.keys()].sort(compareNames);
         for (const name of names) {
           const def = resolveExport(file, name);
+          // Without an entry, names a file only passes through from a package (an icon
+          // registry, `export { cn } from "cn"`) are not listed: no file was chosen as the API.
           if (!def) continue;
           const owner = defOwner(def);
           if (owner !== null && owner !== mod.name) {
@@ -359,7 +431,7 @@ export function buildProject(
                 ? def.local
                 : posix.basename(file).replace(/\.[^.]+$/, "")
               : name;
-          found.push({ file, name: toSketchName(exportName), def });
+          found.push({ file, exportName, name: toSketchName(exportName), def });
         }
       }
       // A name defined in several files is qualified with each file's path in the module. In
@@ -378,22 +450,22 @@ export function buildProject(
         set.add(unitOf(file));
         unitsOf.set(name, set);
       }
-      for (const { file, name, def } of found) {
+      reserve(found.map((f) => f.exportName));
+      for (const { file, exportName, name, def } of found) {
         const shared = (unitsOf.get(name) as Set<string>).size > 1;
         addSymbol(
-          shared ? `${filePrefix(mod.spec, file, inPackageDir(file))}__${name}` : name,
+          shared ? `${filePrefix(mod.spec, file, inPackageDir(file))}__${name}` : exportName,
           def,
         );
       }
     }
     mod.symbols = [...symbols.values()];
-    mod.reexports = [...reexports.entries()]
-      .sort(([a], [b]) => compareNames(a, b))
-      .map(([from, names]) => ({
-        from: `.${from}`,
-        names: [...names].sort(compareNames),
-        leading: [],
-      }));
+    mod.reexports = [
+      ...[...reexports.entries()].map(([from, names]) => ({ from: `.${from}`, names })),
+      ...[...external.entries()].map(([pkg, names]) => ({ from: packagePath(pkg), names })),
+    ]
+      .sort((a, b) => compareNames(a.from, b.from))
+      .map(({ from, names }) => ({ from, names: [...names].sort(compareNames), leading: [] }));
   }
 
   // Whether every name `file` exports is part of `mod`'s public API (e.g. the entry has

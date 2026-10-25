@@ -57,6 +57,11 @@
       "minimum": 40,
       "default": null
     },
+    "typed": {
+      "description": "Opt-in: the TypeScript type checker fills in the types that TypeScript and JavaScript code leaves out (return types, unannotated constants and fields), instead of '<inferred>'. Needs the project's type declarations (node_modules) to be installed; types it cannot resolve stay '<inferred>', inferred types longer than 200 characters become '<complex>'. Not used for .vue, .svelte and .astro files.",
+      "type": "boolean",
+      "default": false
+    },
     "agent": {
       "description": "Coding agent used by `archlock push`, `audit` and `init --with-summaries`.",
       "type": "object",

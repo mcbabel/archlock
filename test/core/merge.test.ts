@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mergeModule } from "../../src/core/merge.js";
 import type { ArchModule } from "../../src/core/model.js";
 import { parseSketch } from "../../src/sketch/parse.js";
-import { renderSketch } from "../../src/sketch/render.js";
+import { memberShape, renderSketch, symbolShape } from "../../src/sketch/render.js";
 
 async function parse(text: string): Promise<ArchModule> {
   const r = await parseSketch(text, "m.arch.py");
@@ -14,11 +14,12 @@ async function parse(text: string): Promise<ArchModule> {
 async function merge(
   sketch: string,
   code: string,
-  opts = { deps: true, symbols: true },
+  opts: { deps: boolean; symbols: boolean; renames?: boolean } = { deps: true, symbols: true },
   externals: string[] = [],
 ) {
-  const result = mergeModule(await parse(sketch), await parse(code), externals, opts);
-  return { text: renderSketch(result.module), lost: result.lost };
+  const shape = opts.renames ? { symbol: symbolShape, member: memberShape } : undefined;
+  const result = mergeModule(await parse(sketch), await parse(code), externals, { ...opts, shape });
+  return { text: renderSketch(result.module), lost: result.lost, moved: result.moved };
 }
 
 const header = (deps = "[]") =>
@@ -175,5 +176,64 @@ def other() -> void: ...
     const sketch = `${header()}__strictness__ = "deps"\n\ndef planned() -> void: ...\n`;
     const out = await merge(sketch, `${header()}\ndef real() -> void: ...\n`);
     expect(out.text).toBe(sketch);
+  });
+
+  it("comments follow a renamed symbol or member whose shape is unchanged", async () => {
+    const sketch = `${header()}
+# factory for invoices
+def create(total: number) -> Invoice: ...
+
+class Invoice:
+    """An invoice."""
+    total: number
+    def send(self, to: string) -> Invoice: ...
+
+class Mailer:
+    # sends it once
+    def send(self, to: string) -> bool: ...
+`;
+    const code = `${header()}
+def make(total: number) -> Bill: ...
+
+class Bill:
+    total: number
+    def send(self, to: string) -> Bill: ...
+
+class Mailer:
+    def deliver(self, to: string) -> bool: ...
+`;
+    const { text, lost, moved } = await merge(sketch, code, {
+      deps: true,
+      symbols: true,
+      renames: true,
+    });
+    expect(lost).toEqual([]);
+    expect(moved).toEqual([
+      { module: "m", from: "create", to: "make" },
+      { module: "m", from: "Invoice", to: "Bill" },
+      { module: "m", from: "Mailer.send", to: "Mailer.deliver" },
+    ]);
+    expect(text).toContain("# factory for invoices\ndef make(total: number) -> Bill: ...");
+    expect(text).toContain('class Bill:\n    """An invoice."""');
+    expect(text).toContain("    # sends it once\n    def deliver(self, to: string) -> bool: ...");
+  });
+
+  it("a rename that is ambiguous or changes the shape loses the comments", async () => {
+    const sketch = `${header()}
+# first
+def a(x: number) -> void: ...
+# second
+def b(x: number) -> void: ...
+# third
+def c(x: string) -> void: ...
+`;
+    const code = `${header()}
+def d(x: number) -> void: ...
+def e(x: number) -> void: ...
+def f(x: number, y: number) -> void: ...
+`;
+    const { lost, moved } = await merge(sketch, code, { deps: true, symbols: true, renames: true });
+    expect(moved).toEqual([]);
+    expect(lost.map((l) => l.symbol)).toEqual(["a", "b", "c"]);
   });
 });

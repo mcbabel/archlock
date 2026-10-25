@@ -62,8 +62,15 @@ export interface FileFacts {
    * package than its type, so they are attached per package after extraction.
    */
   goMethods?: { receiver: string; method: MethodMember }[];
+  /** Go only: the file's build constraint (`linux`, `linux && amd64`), if it has one. */
+  goBuild?: string;
   /** Java only: the file's package (`com.acme.shop`; empty for the default package). */
   javaPackage?: string;
+  /**
+   * Vue only: components the template uses (`<UserCard>`, `<user-card>` → `UserCard`), for
+   * auto-imported components (`linkAutoImports`).
+   */
+  templateTags?: { name: string; line: number; column: number }[];
   /** Rust only: what the crate pass (`linkRustCrates`) needs to resolve paths and re-exports. */
   rust?: RustFacts;
   /** C# only: what the project pass (`linkCSharp`) needs to resolve type names. */
@@ -96,6 +103,10 @@ export interface CSharpFacts {
   }[];
   /** Capitalized names used in code (`Invoice`, `Billing.Invoice`), with their first position. */
   refs: { name: string; line: number; column: number }[];
+  /** Methods called on a value (`services.AddEventBus(…)`): candidates for extension methods. */
+  calls: { name: string; line: number; column: number }[];
+  /** Extension methods the file declares (`static … M(this T x)`), with their namespace. */
+  extensions: { name: string; namespace: string }[];
 }
 
 /** A `use` leaf (`use a::b::{c as d, e::*}` has two), or an inline path like `crate::x::f()`. */

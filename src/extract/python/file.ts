@@ -6,10 +6,11 @@
  */
 
 import type { Node, Parser } from "web-tree-sitter";
-import { canonicalType } from "../../core/canonical.js";
+import { canonicalType, decodePythonString, pythonString } from "../../core/canonical.js";
 import {
   type ArchSymbol,
   type ClassLikeSymbol,
+  type EnumMember,
   type EnumSymbol,
   emptySoft,
   type FieldMember,
@@ -19,6 +20,7 @@ import {
   type Member,
   type MethodMember,
   type Param,
+  positionalFirst,
   type Signature,
 } from "../../core/model.js";
 import { countLines } from "../../fs/files.js";
@@ -503,7 +505,10 @@ class PythonFileExtractor {
         const a = s.type === "expression_statement" ? named(s)[0] : undefined;
         const left = a?.type === "assignment" ? a.childForFieldName("left") : null;
         if (left?.type === "identifier" && isPublic(left.text) && !a?.childForFieldName("type")) {
-          members.push({ name: left.text, soft: emptySoft() });
+          const member: EnumMember = { name: left.text, soft: emptySoft() };
+          const value = literalValue(a?.childForFieldName("right") ?? null);
+          if (value !== undefined) member.value = value;
+          members.push(member);
         }
       }
       const enumBases = bases.filter((b) => lastSegment(b) !== "Enum");
@@ -526,6 +531,8 @@ class PythonFileExtractor {
     };
     const methods = new Map<string, Node[]>();
     const properties = new Map<string, { getter: Node; setter: boolean }>();
+    // Annotated class attributes other than `ClassVar`s: a dataclass's constructor parameters.
+    const annotated: string[] = [];
 
     for (const s of statements) {
       if (isDocstring(s)) continue;
@@ -536,7 +543,9 @@ class PythonFileExtractor {
         if (left?.type !== "identifier" || !isPublic(left.text) || SKIPPED_DUNDERS.has(left.text))
           continue;
         const typeNode = a.childForFieldName("type");
-        add(this.field(left.text, typeNode, typeNode === null, s));
+        const field = this.field(left.text, typeNode, typeNode === null, s);
+        if (typeNode !== null && field.kind === "field" && !field.static) annotated.push(left.text);
+        add(field);
         continue;
       }
       if (s.type !== "function_definition" && s.type !== "decorated_definition") continue;
@@ -587,6 +596,7 @@ class PythonFileExtractor {
       soft: emptySoft(),
       loc,
     };
+    if (classDecorators.length > 0) positionalFirst(sym, annotated);
     return sym;
   }
 
@@ -674,6 +684,19 @@ class PythonFileExtractor {
   }
 }
 
+/** A literal as written in a sketch (`2`, `-1`, `"paid"`, `True`); other expressions: none. */
+function literalValue(node: Node | null): string | undefined {
+  if (!node) return undefined;
+  if (node.type === "integer" || node.type === "float") return node.text;
+  if (node.type === "unary_operator" && /^-\s*\d/.test(node.text))
+    return node.text.replace(/\s+/g, "");
+  if (node.type === "true" || node.type === "false") return node.text;
+  if (node.type === "string") {
+    const decoded = decodePythonString(node.text);
+    return decoded === null ? undefined : pythonString(decoded);
+  }
+  return undefined;
+}
 function stringList(node: Node | null): string[] {
   if (!node || !["list", "tuple"].includes(node.type)) return [];
   return named(node)

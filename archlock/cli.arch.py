@@ -54,6 +54,7 @@ class GlobalOptions(Protocol):
 class InitOptions(Protocol):
     agents: Opt[boolean]
     force: Opt[boolean]
+    typed: Opt[boolean]
     withSummaries: Opt[boolean]
     yes: Opt[boolean]
 

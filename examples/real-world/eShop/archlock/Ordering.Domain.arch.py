@@ -3,12 +3,12 @@ __paths__ = ["src/Ordering.Domain/**"]
 __depends_on__ = []
 
 class OrderStatus(Enum):
-    Submitted = ...
-    AwaitingValidation = ...
-    StockConfirmed = ...
-    Paid = ...
-    Shipped = ...
-    Cancelled = ...
+    Submitted = 1
+    AwaitingValidation = 2
+    StockConfirmed = 3
+    Paid = 4
+    Shipped = 5
+    Cancelled = 6
 
 class IAggregateRoot(Protocol): ...
 
@@ -79,6 +79,10 @@ class CardType:
 class Entity:
     DomainEvents: Readonly[IReadOnlyCollection[INotification]]
     Id: Readonly[int]
+    @staticmethod
+    def __eq__(left: Entity, right: Entity) -> bool: ...
+    @staticmethod
+    def __ne__(left: Entity, right: Entity) -> bool: ...
     def AddDomainEvent(self, eventItem: INotification) -> void: ...
     def ClearDomainEvents(self) -> void: ...
     def Equals(self, obj: object) -> bool: ...
@@ -168,14 +172,14 @@ class OrderShippedDomainEvent(INotification):
 
 @record
 class OrderStartedDomainEvent(INotification):
-    CardExpiration: Readonly[DateTime]
-    CardHolderName: Readonly[string]
-    CardNumber: Readonly[string]
-    CardSecurityNumber: Readonly[string]
-    CardTypeId: Readonly[int]
     Order: Readonly[Order]
     UserId: Readonly[string]
     UserName: Readonly[string]
+    CardTypeId: Readonly[int]
+    CardNumber: Readonly[string]
+    CardSecurityNumber: Readonly[string]
+    CardHolderName: Readonly[string]
+    CardExpiration: Readonly[DateTime]
 
 class OrderStatusChangedToAwaitingValidationDomainEvent(INotification):
     OrderId: Readonly[int]

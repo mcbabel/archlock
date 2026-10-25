@@ -109,7 +109,7 @@ export let v = 2;`),
     ).toBe(
       [
         "class E(Enum):",
-        "    One = ...",
+        "    One = 1",
         "    two_words = ...",
         "",
         "Pair: TypeAlias[A, 'B = A'] = '[A, B]'",
@@ -156,5 +156,66 @@ export let v = 2;`),
       ["./cjs", "*", false],
     ]);
     expect(facts.stars).toEqual(["./star"]);
+  });
+
+  it("CommonJS exports", () => {
+    expect(
+      sketchOf(
+        "function create(name) { return {}; }\nconst VERSION = 1;\nmodule.exports = { create, VERSION, helper: () => 1 };\nexports.extra = function (a, b) {};\n",
+        "src/m/index.js",
+      ),
+    ).toBe(`def create(name) -> '<inferred>': ...
+def extra(a, b) -> '<inferred>': ...
+def helper() -> '<inferred>': ...
+
+VERSION: '<inferred>'`);
+    // `module.exports = …` is the default export, as in `export default`.
+    expect(sketchOf("module.exports = class Client { get(url) {} };\n", "src/m/index.cjs")).toBe(
+      "class default:\n    def get(self, url) -> '<inferred>': ...",
+    );
+  });
+
+  it("a mangled name yields to a code name that is already valid", () => {
+    expect(
+      sketchOf(
+        "export const user$: A = 1;\nexport const user_: B = 2;\nexport const $store: C = 3;",
+      ),
+    ).toBe("_store: C\nuser_: B\nuser__: A");
+  });
+
+  it("re-exports of an external package through the entry are listed with their package", () => {
+    const facts = extractTypeScriptFile(
+      "src/m/index.ts",
+      'export { serve } from "@hono/node-server";\nexport * as z from "zod";\nimport { Hono } from "hono";\nexport { Hono };\n',
+    );
+    const project = buildProject(
+      [facts],
+      [{ name: "m", paths: ["src/m/**"], entry: "src/m/index.ts" }],
+      () => ({ resolve: (s: string) => ({ kind: "external", package: s }) }),
+    );
+    expect(renderSketch(moduleFromCode(project.modules.get("m") as never))).toBe(
+      [
+        '__module__ = "m"',
+        '__paths__ = ["src/m/**"]',
+        '__entry__ = "src/m/index.ts"',
+        "__depends_on__ = []",
+        "",
+        "from hono import Hono",
+        "from hono.node_server import serve",
+        "from zod import z",
+        "",
+      ].join("\n"),
+    );
+    // Without an entry, every file's exports count: pass-through files are not listed.
+    const icons = extractTypeScriptFile(
+      "src/m/icons.ts",
+      'export { serve } from "@hono/node-server";\n',
+    );
+    const entryless = buildProject(
+      [icons],
+      [{ name: "m", paths: ["src/m/**"], entry: null }],
+      () => ({ resolve: (s: string) => ({ kind: "external", package: s }) }),
+    );
+    expect(entryless.modules.get("m")?.reexports).toEqual([]);
   });
 });
